@@ -1,56 +1,116 @@
-> [!NOTE]
-> This "Note" section is here for information about the template, and should be deleted in the target repository.
->
-> The `Component` name is used as generic name for component repository being created.
->
-> In this template, projects are inlined in `src` directory; no need to have sub-folders since the project names are explicit.
-> However, if the list becomes to long (say more than 15 projects), we might want to group them. It's important however to **keep all projects on the same level of the hierarchy** for simplicity. Specially avoid projects under `src` when there are groups.
-> For example, do something like:
->
-> ```txt
-> src
-> ├───Group1
-> │   ├───Component.Group1.SubComponent1
-> │   ├───Component.Group1.SubComponent1.Tests
-> │   └───Component.Group1.SubComponent2
-> └───Group2
->     ├───Component.Group2.SubComponent3
->     ├───Component.Group2.SubComponent4
->     └───Component.Group2.Tests
-> ```
->
-> Some sections of this README may not apply on the specific repository being created, feel free to remove them. But, some basic info must be provided: description, links to software factory, steps to build (if specific).
+# Memoa
 
-# \<Component\>
+ASP.NET Core middleware that captures and persists HTTP requests for review and replay.
 
-[![Build Status]()]()
+## Packages
 
-`<Component>` is (...).
+| Package | Description |
+|---------|-------------|
+| `Memoa.Core` | Core middleware, abstractions, and pipeline |
+| `Memoa.Sinks.AzureBlobStorage` | Azure Blob Storage sink (write & read) |
+| `Memoa.Replay.Cli` | .NET tool to replay captured requests |
 
-This repository contains (...).
+## Quick Start
 
-## Documentation
+```csharp
+var builder = WebApplication.CreateBuilder(args);
 
-For introduction, architecture overview, in-depth view, etc., see: [`/docs`](./docs)
+builder.Services
+    .AddMemoa(opts =>
+    {
+        opts.Capture.IncludeHeaders = true;
+        opts.Capture.IncludeBody = true;
+        opts.Pipeline.Mode = PipelineMode.Background;
+    })
+    .WriteTo.AzureBlobStorage("UseDevelopmentStorage=true");
 
-## Getting Started
+var app = builder.Build();
+app.UseMemoa();
+// ... your routes
+app.Run();
+```
 
-### Prerequisites
+## Configuration
 
-- .NET SDK
+Bind from `appsettings.json`:
 
-### Steps to build
+```json
+{
+  "Memoa": {
+    "Enabled": true,
+    "CorrelationIdHeader": "X-Correlation-Id",
+    "Capture": {
+      "IncludeHeaders": true,
+      "IncludeBody": true,
+      "IncludeResponse": false,
+      "MaxBodySizeBytes": 1048576,
+      "HeaderDenyList": ["Authorization", "Cookie", "Set-Cookie"]
+    },
+    "Filters": {
+      "PathIncludePatterns": ["/**"],
+      "PathExcludePatterns": ["/health*", "/metrics*", "/favicon.ico"],
+      "Methods": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+    },
+    "Pipeline": {
+      "Mode": "Background",
+      "ChannelCapacity": 1024,
+      "WorkerCount": 1,
+      "FullMode": "DropWrite"
+    }
+  }
+}
+```
 
-1. Build
+## Replay CLI
 
-    `dotnet build`
+Install as a .NET tool:
 
-1. Run tests (Optional)
+```bash
+dotnet tool install --global Memoa.Replay.Cli
+```
 
-    `dotnet test --no-build`
+Replay captured requests:
 
-More information: [.NET CLI overview](https://learn.microsoft.com/en-us/dotnet/core/tools/).
+```bash
+memoa-replay \
+  --connection-string "UseDevelopmentStorage=true" \
+  --target https://localhost:5001 \
+  --from "2024-01-01T00:00:00Z" \
+  --methods GET POST \
+  --dry-run
+```
 
-### Local execution
+## OpenTelemetry
 
-(...)
+Memoa emits traces and metrics via `System.Diagnostics`:
+
+- **ActivitySource**: `"Memoa"` — spans for `memoa.capture` and `memoa.sink.write`
+- **Meter**: `"Memoa"` — counters for captured/dropped/written/failed/skipped requests, histogram for sink write duration, gauge for channel queue size
+
+## Architecture
+
+```
+HTTP Request → MemoaMiddleware → IRequestPipeline → IRequestSink(s)
+                                       ↓
+                          BackgroundRequestPipeline (Channel<T>)
+                                  or
+                          InlineRequestPipeline (sync)
+```
+
+## Building
+
+```bash
+dotnet build
+dotnet test --filter "TestCategory!=Azurite"
+```
+
+Integration tests require [Azurite](https://github.com/Azure/Azurite):
+
+```bash
+docker run -p 10000:10000 mcr.microsoft.com/azure-storage/azurite
+dotnet test
+```
+
+## License
+
+MIT
