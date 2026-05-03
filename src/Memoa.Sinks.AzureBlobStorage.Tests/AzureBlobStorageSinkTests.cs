@@ -14,8 +14,9 @@ namespace Memoa.Sinks.AzureBlobStorage.Tests;
 [Category("Azurite")]
 internal class AzureBlobStorageSinkTests
 {
-    private const string AzuriteConnectionString =
-        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
+    private static string AzuriteConnectionString =>
+        Environment.GetEnvironmentVariable("AZURITE_CONNECTION_STRING")
+        ?? "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;";
 
     private BlobContainerClient _containerClient = null!;
     private AzureBlobStorageSinkOptions _options = null!;

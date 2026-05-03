@@ -1,0 +1,31 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="NuGet.config" />
+    <File Path="README.md" />
+    <File Path="Version.props" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Memoa.Core.Tests/Memoa.Core.Tests.csproj" />
+    <Project Path="src/Memoa.Core/Memoa.Core.csproj" />
+    <Project Path="src/Memoa.Replay.Api.Tests/Memoa.Replay.Api.Tests.csproj" />
+    <Project Path="src/Memoa.Replay.Api/Memoa.Replay.Api.csproj" />
+    <Project Path="src/Memoa.Replay.Cli.Tests/Memoa.Replay.Cli.Tests.csproj" />
+    <Project Path="src/Memoa.Replay.Cli/Memoa.Replay.Cli.csproj" />
+    <Project Path="src/Memoa.Replay.Core.Tests/Memoa.Replay.Core.Tests.csproj" />
+    <Project Path="src/Memoa.Replay.Core/Memoa.Replay.Core.csproj" />
+    <Project Path="src/Memoa.Sample.Api/Memoa.Sample.Api.csproj" />
+    <Project Path="src/Memoa.Sinks.AmazonS3/Memoa.Sinks.AmazonS3.csproj" />
+    <Project Path="src/Memoa.Sinks.AzureBlobStorage.Tests/Memoa.Sinks.AzureBlobStorage.Tests.csproj" />
+    <Project Path="src/Memoa.Sinks.AzureBlobStorage/Memoa.Sinks.AzureBlobStorage.csproj" />
+    <Project Path="src/Memoa.Sinks.File/Memoa.Sinks.File.csproj" />
+    <Project Path="src/Memoa.Sinks.Redis/Memoa.Sinks.Redis.csproj" />
+  </Folder>
+</Solution>
