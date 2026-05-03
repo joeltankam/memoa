@@ -10,7 +10,7 @@
 
   <PropertyGroup Label="Paths">
     <RepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)/../..'))</RepositoryRoot>
-    <SolutionFile>$(RepositoryRoot)/Component.sln</SolutionFile>
+    <SolutionFile>$(RepositoryRoot)/Memoa.sln</SolutionFile>
   </PropertyGroup>
 
   <PropertyGroup Label="Compilation">
