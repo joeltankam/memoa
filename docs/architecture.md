@@ -154,7 +154,7 @@ Test projects and Moq's `DynamicProxyGenAssembly2` are granted internal access v
 
 ## NuGet Package Dependencies
 
-```
+```text
 Memoa.Core
 ├── FrameworkReference: Microsoft.AspNetCore.App
 └── (no external packages)
@@ -175,8 +175,22 @@ Memoa.Sinks.Redis
 ├── StackExchange.Redis
 └── ProjectReference: Memoa.Core
 
+Memoa.Replay.Core
+├── Microsoft.Extensions.Http
+├── Microsoft.Extensions.Logging.Abstractions
+└── ProjectReference: Memoa.Core
+
 Memoa.Replay.Cli
 ├── System.CommandLine
 ├── ProjectReference: Memoa.Core
-└── ProjectReference: Memoa.Sinks.AzureBlobStorage
+├── ProjectReference: Memoa.Replay.Core
+├── ProjectReference: Memoa.Sinks.AzureBlobStorage
+├── ProjectReference: Memoa.Sinks.File
+├── ProjectReference: Memoa.Sinks.AmazonS3
+└── ProjectReference: Memoa.Sinks.Redis
+
+Memoa.Replay.Api
+├── FrameworkReference: Microsoft.AspNetCore.App
+├── ProjectReference: Memoa.Core
+└── ProjectReference: Memoa.Replay.Core
 ```

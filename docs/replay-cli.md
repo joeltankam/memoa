@@ -1,7 +1,8 @@
 # Replay CLI
 
-The Memoa Replay CLI is a .NET global tool that reads captured requests from a source
-and replays them against a target HTTP endpoint.
+The Memoa Replay CLI is a .NET global tool that reads captured requests from any configured
+source and replays them against a target HTTP endpoint, optionally reproducing the original
+request timeline.
 
 ## Installation
 
@@ -13,78 +14,150 @@ dotnet tool install --global Memoa.Replay.Cli
 
 ```bash
 memoa-replay \
+  --source azure \
   --connection-string "UseDevelopmentStorage=true" \
   --target https://localhost:5001
 ```
 
 ## Options
 
-| Option | Alias | Required | Default | Description |
-|--------|-------|----------|---------|-------------|
-| `--connection-string` | `-c` | Yes | — | Azure Storage connection string for the source |
-| `--target` | `-t` | Yes | — | Base URL to replay requests against |
-| `--container` | — | No | `memoa-requests` | Blob container name |
-| `--prefix` | — | No | — | Blob prefix filter |
-| `--from` | — | No | — | Only replay requests after this UTC time |
-| `--to` | — | No | — | Only replay requests before this UTC time |
-| `--methods` | — | No | — | Only replay these HTTP methods |
-| `--path` | — | No | — | Glob pattern to filter request paths |
-| `--dry-run` | — | No | `false` | Print requests without sending |
-| `--parallelism` | — | No | `1` | Concurrent replay requests |
-| `--delay` | — | No | `0` | Delay between requests (ms) |
+### Required
+
+| Option | Alias | Description |
+|--------|-------|-------------|
+| `--source` | `-s` | Source backend: `azure`, `file`, `s3`, `redis` |
+| `--target` | `-t` | Base URL to replay requests against |
+
+### Timeline and Pacing
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--timeline` | `none` | Timeline mode: `none` (parallel/delay) or `relative` (preserve original timing) |
+| `--parallelism` | `1` | Concurrent requests (only when `--timeline none`) |
+| `--delay` | `0` | Fixed delay between requests in ms (only when `--timeline none`) |
+| `--dry-run` | `false` | Print requests without sending |
+
+### Query Filters
+
+| Option | Description |
+|--------|-------------|
+| `--from` | Only replay requests captured after this UTC time |
+| `--to` | Only replay requests captured before this UTC time |
+| `--methods` | Only replay these HTTP methods |
+| `--path` | Glob pattern to filter request paths |
+
+### Source: Azure Blob Storage (`--source azure`)
+
+| Option | Alias | Default | Description |
+|--------|-------|---------|-------------|
+| `--connection-string` | `-c` | — | Azure Storage connection string (required) |
+| `--container` | — | `memoa-requests` | Blob container name |
+| `--prefix` | — | — | Blob prefix filter |
+
+### Source: File System (`--source file`)
+
+| Option | Alias | Description |
+|--------|-------|-------------|
+| `--directory` | `-d` | Path to the captured requests directory (required) |
+
+### Source: Amazon S3 (`--source s3`)
+
+| Option | Description |
+|--------|-------------|
+| `--bucket` | S3 bucket name (required) |
+| `--region` | AWS region |
+| `--service-url` | S3-compatible service URL (e.g., MinIO, LocalStack) |
+
+### Source: Redis (`--source redis`)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--redis-connection` | — | Redis connection string (required) |
+| `--stream-key` | `memoa:requests` | Redis stream key |
+
+## Timeline Replay
+
+The `--timeline` option controls inter-request timing:
+
+- **`none`** (default): Fire requests as fast as possible, limited by `--parallelism` and `--delay`.
+- **`relative`**: Reproduce the exact timing between original requests. The tool computes the delta
+  between consecutive `CapturedAtUtc` timestamps and waits that duration before sending the next
+  request. This reproduces the exact load pattern the API originally received.
+
+When `--timeline relative` is set, `--parallelism` is ignored (requests are always sequential).
+
+## Replay Header
+
+All replayed requests include the header `X-Memoa-Replay: true` so the target application can
+distinguish replay traffic from live traffic.
 
 ## Examples
 
-### Replay POST requests from a specific time range
+### Replay from file system with timeline reproduction
 
 ```bash
 memoa-replay \
-  -c "DefaultEndpointsProtocol=https;AccountName=..." \
-  -t https://staging.api.example.com \
+  --source file \
+  --directory ./captured-requests \
+  --target https://staging.api.example.com \
+  --timeline relative
+```
+
+### Replay from S3 with filters
+
+```bash
+memoa-replay \
+  --source s3 \
+  --bucket my-memoa-bucket \
+  --region us-east-1 \
+  --target https://localhost:5001 \
   --from "2026-05-01T00:00:00Z" \
-  --to "2026-05-02T00:00:00Z" \
   --methods POST PUT
 ```
 
-### Dry run to preview what would be replayed
+### Replay from Redis
 
 ```bash
 memoa-replay \
-  -c "UseDevelopmentStorage=true" \
-  -t https://localhost:5001 \
-  --dry-run
+  --source redis \
+  --redis-connection "localhost:6379" \
+  --stream-key "memoa:requests" \
+  --target https://localhost:5001
 ```
 
-Output:
-
-```
-[DRY-RUN] POST /api/orders?status=new
-[DRY-RUN] PUT /api/orders/123
-[DRY-RUN] GET /api/products
-```
-
-### Parallel replay with delay
+### Parallel load replay from Azure
 
 ```bash
 memoa-replay \
+  --source azure \
   -c "UseDevelopmentStorage=true" \
   -t https://load-test.example.com \
   --parallelism 10 \
   --delay 100
 ```
 
-### Filter by path pattern
+### Dry run to preview
 
 ```bash
 memoa-replay \
-  -c "UseDevelopmentStorage=true" \
+  --source file \
+  -d ./captured-requests \
   -t https://localhost:5001 \
-  --path "/api/orders/**"
+  --dry-run
+```
+
+Output:
+
+```text
+[DRY-RUN] POST /api/orders?status=new
+[DRY-RUN] PUT /api/orders/123
+[DRY-RUN] GET /api/products
 ```
 
 ## Replay Behavior
 
 - **Headers**: Original request headers are forwarded (except `Host`, `Content-*`, `Transfer-Encoding`)
+- **Replay header**: `X-Memoa-Replay: true` is added to every request
 - **Body**: Request body is replayed exactly as captured (text or binary)
 - **Content-Type**: Preserved from the original request
 - **Method**: Original HTTP method is used
@@ -99,16 +172,11 @@ memoa-replay \
 
 ## Output
 
-```
-[OK] POST /api/orders (3fa85f64-5717-4562-b3fc-2c963f66afa6)
-[OK] GET /api/products (7c9e6679-7425-40de-944b-e07fc1f90ae7)
-[FAIL] PUT /api/orders/999 (a1b2c3d4-...): 404 Not Found
+```text
+[OK] POST /api/orders → 201 (3fa85f64-5717-4562-b3fc-2c963f66afa6)
+[OK] GET /api/products → 200 (7c9e6679-7425-40de-944b-e07fc1f90ae7)
+[FAIL] PUT /api/orders/999 (a1b2c3d4-...): Connection refused
 
 Replay complete: 3 total, 2 succeeded, 1 failed
 ```
 
-## Current Limitations
-
-- Currently reads from Azure Blob Storage only (additional source support planned)
-- No request transformation/modification before replay
-- No response validation (status codes are not checked against original)

@@ -7,8 +7,13 @@ ASP.NET Core middleware that captures and persists HTTP requests for review and 
 | Package | Description |
 |---------|-------------|
 | `Memoa.Core` | Core middleware, abstractions, and pipeline |
-| `Memoa.Sinks.AzureBlobStorage` | Azure Blob Storage sink (write & read) |
-| `Memoa.Replay.Cli` | .NET tool to replay captured requests |
+| `Memoa.Sinks.File` | Local file system sink |
+| `Memoa.Sinks.AzureBlobStorage` | Azure Blob Storage sink |
+| `Memoa.Sinks.AmazonS3` | Amazon S3 / S3-compatible sink |
+| `Memoa.Sinks.Redis` | Redis Streams sink |
+| `Memoa.Replay.Core` | Shared replay engine (timeline, parallelism) |
+| `Memoa.Replay.Cli` | .NET global tool for request replay |
+| `Memoa.Replay.Api` | REST API endpoints for in-app replay |
 
 ## Quick Start
 
@@ -69,16 +74,37 @@ Install as a .NET tool:
 dotnet tool install --global Memoa.Replay.Cli
 ```
 
-Replay captured requests:
+Replay captured requests from any source with optional timeline reproduction:
 
 ```bash
 memoa-replay \
+  --source azure \
   --connection-string "UseDevelopmentStorage=true" \
   --target https://localhost:5001 \
-  --from "2024-01-01T00:00:00Z" \
-  --methods GET POST \
-  --dry-run
+  --timeline relative \
+  --from "2026-05-01T00:00:00Z" \
+  --methods GET POST
 ```
+
+Supported sources: `azure`, `file`, `s3`, `redis`.
+
+## Replay API
+
+Inject replay REST endpoints into your ASP.NET Core application:
+
+```csharp
+builder.Services.AddMemoaReplay(options =>
+{
+    options.RoutePrefix = "/replay";
+    options.TargetBaseUrl = "https://staging.api.example.com";
+    options.AuthorizationPolicy = "AdminOnly";
+});
+
+app.MapMemoaReplay();
+```
+
+Endpoints: `GET /replay` (query requests), `POST /replay/run` (fire-and-forget replay),
+`GET /replay/jobs/{id}` (poll status).
 
 ## OpenTelemetry
 

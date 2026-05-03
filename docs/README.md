@@ -15,6 +15,7 @@ and persists HTTP requests for review, debugging, and replay.
 - [Pipeline](pipeline.md) — Background vs inline modes and tuning
 - [Filtering](filtering.md) — Path patterns, methods, and status code filters
 - [Replay CLI](replay-cli.md) — Replaying captured requests against a target
+- [Replay API](replay-api.md) — REST API endpoints for in-app replay
 - [Observability](observability.md) — OpenTelemetry traces and metrics
 - [Architecture](architecture.md) — Internal design and extension points
 - [Custom Sinks](custom-sinks.md) — How to implement your own sink
@@ -29,4 +30,6 @@ and persists HTTP requests for review, debugging, and replay.
 | `Memoa.Sinks.AzureBlobStorage` | — | Azure Blob Storage sink |
 | `Memoa.Sinks.AmazonS3` | — | Amazon S3 / S3-compatible sink |
 | `Memoa.Sinks.Redis` | — | Redis Streams sink |
+| `Memoa.Replay.Core` | — | Shared replay engine (timeline, parallelism) |
 | `Memoa.Replay.Cli` | — | .NET global tool for request replay |
+| `Memoa.Replay.Api` | — | REST API endpoints for in-app replay |
