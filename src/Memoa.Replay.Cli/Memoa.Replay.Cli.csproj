@@ -15,7 +15,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Memoa.Core\Memoa.Core.csproj" />
+    <ProjectReference Include="..\Memoa.Replay.Core\Memoa.Replay.Core.csproj" />
+    <ProjectReference Include="..\Memoa.Sinks.AmazonS3\Memoa.Sinks.AmazonS3.csproj" />
     <ProjectReference Include="..\Memoa.Sinks.AzureBlobStorage\Memoa.Sinks.AzureBlobStorage.csproj" />
+    <ProjectReference Include="..\Memoa.Sinks.File\Memoa.Sinks.File.csproj" />
+    <ProjectReference Include="..\Memoa.Sinks.Redis\Memoa.Sinks.Redis.csproj" />
   </ItemGroup>
 
 </Project>
