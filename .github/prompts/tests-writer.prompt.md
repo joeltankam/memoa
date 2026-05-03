@@ -1,6 +1,6 @@
 ---
 agent: 'agent'
-tools: ['editFiles', 'search', 'codebase', 'problems', 'runCommands']
+tools: ['execute', 'edit', 'search', 'web', 'read']
 description: 'Generate unit or integration tests for a class or method'
 argument-hint: 'Class or method to test, e.g. "MarketProxy.DataService.ProcessDataAsync"'
 ---

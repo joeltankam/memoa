@@ -1,6 +1,6 @@
 ---
 agent: 'agent'
-tools: ['editFiles', 'search', 'codebase', 'fetch', 'problems']
+tools: ['execute', 'edit', 'search', 'web', 'read']
 description: 'Write or update project documentation following the Diátaxis framework'
 argument-hint: 'Describe what documentation to write or update'
 ---
