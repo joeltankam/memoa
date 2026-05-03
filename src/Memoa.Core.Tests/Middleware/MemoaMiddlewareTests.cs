@@ -590,5 +590,263 @@ internal class MemoaMiddlewareTests
         await host.StopAsync();
         host.Dispose();
     }
+
+    [Test]
+    public async Task Middleware_ShouldCaptureResponseBody_WhenResponseBodyCaptureEnabled()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost(
+            opts =>
+            {
+                opts.Capture.IncludeResponse = true;
+                opts.Capture.IncludeResponseBody = true;
+            },
+            handler: static async ctx =>
+            {
+                ctx.Response.ContentType = "text/plain";
+                await ctx.Response.WriteAsync("response-body");
+            });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        var response = await client.GetAsync("/api/test");
+
+        // Assert
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Be("response-body");
+
+        captured.Should().NotBeNull();
+        captured!.Response.Should().NotBeNull();
+        captured.Response!.Body.Should().NotBeNull();
+        captured.Response.Body!.Text.Should().Be("response-body");
+        captured.Response.Body.Truncated.Should().BeFalse();
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldTruncateResponseBody_WhenExceedingMaxResponseBodySize()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost(
+            opts =>
+            {
+                opts.Capture.IncludeResponse = true;
+                opts.Capture.IncludeResponseBody = true;
+                opts.Capture.MaxResponseBodySizeBytes = 3;
+            },
+            handler: static async ctx =>
+            {
+                ctx.Response.ContentType = "text/plain";
+                await ctx.Response.WriteAsync("Hello, World!");
+            });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await client.GetAsync("/api/test");
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.Response!.Body.Should().NotBeNull();
+        captured.Response.Body!.Truncated.Should().BeTrue();
+        captured.Response.Body.Text!.Length.Should().BeLessThanOrEqualTo(3);
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldFilterHeadersByAllowList_WhenAllowListConfigured()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.Capture.IncludeHeaders = true;
+            opts.Capture.HeaderAllowList = ["X-Custom-*"];
+        });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        client.DefaultRequestHeaders.Add("X-Custom-Allowed", "yes");
+        client.DefaultRequestHeaders.Add("X-Other-Header", "no");
+
+        // Act
+        await client.GetAsync("/api/test");
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.Headers.Should().NotBeNull();
+        captured.Headers!.Should().ContainKey("X-Custom-Allowed");
+        captured.Headers.Should().NotContainKey("X-Other-Header");
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldCaptureCorrelationId_WhenCustomHeaderConfigured()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.CorrelationIdHeader = "X-Request-Id";
+        });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        client.DefaultRequestHeaders.Add("X-Request-Id", "req-xyz-789");
+
+        // Act
+        await client.GetAsync("/api/test");
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.CorrelationId.Should().Be("req-xyz-789");
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldNotCaptureCorrelationId_WhenHeaderAbsent()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost();
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        // Act — no correlation ID header sent
+        await client.GetAsync("/api/test");
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.CorrelationId.Should().BeNull();
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldNotCaptureRouteValues_WhenDisabled()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.Capture.IncludeRouteValues = false;
+        });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await client.GetAsync("/api/test");
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.RouteValues.Should().BeNull();
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldSkipRequest_WhenPathNotMatchingIncludePattern()
+    {
+        // Arrange
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.Filters.PathIncludePatterns = ["/api/v2/**"];
+            opts.Filters.PathExcludePatterns = [];
+        });
+
+        // Act — path doesn't match /api/v2/**
+        await client.GetAsync("/api/test");
+
+        // Assert
+        sinkMock.Verify(
+            s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldNotSwallowDownstreamExceptions()
+    {
+        // Arrange
+        var (host, client, _) = await CreateTestHost(handler: static _ => throw new InvalidOperationException("boom"));
+
+        // Act — downstream exception propagates through the middleware
+        var act = async () => await client.GetAsync("/api/test");
+
+        // Assert — exception is not swallowed; it reaches the client
+        await act.Should().ThrowAsync<Exception>();
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldNotAffectResponse_WhenPipelineSubmitThrows()
+    {
+        // Arrange
+        var sinkMock = new Mock<IRequestSink>(MockBehavior.Strict);
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("sink blew up"));
+
+        var host = await new HostBuilder()
+            .ConfigureWebHost(webBuilder =>
+            {
+                webBuilder
+                    .UseTestServer()
+                    .ConfigureServices(services =>
+                    {
+                        services.AddRouting();
+                        services.AddMemoa(opts => opts.Pipeline.Mode = PipelineMode.Inline);
+                        services.AddSingleton<IRequestSink>(sinkMock.Object);
+                    })
+                    .Configure(app =>
+                    {
+                        app.UseMemoa();
+                        app.Run(static async ctx => await ctx.Response.WriteAsync("OK"));
+                    });
+            })
+            .StartAsync();
+
+        var client = host.GetTestClient();
+
+        // Act — sink throws but pipeline error should be swallowed
+        var response = await client.GetAsync("/api/test");
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Assert — response is still OK despite sink failure
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        body.Should().Be("OK");
+
+        await host.StopAsync();
+        host.Dispose();
+    }
 }
 
