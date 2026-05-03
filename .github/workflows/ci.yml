@@ -69,14 +69,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
 
-    services:
-      azurite:
-        image: mcr.microsoft.com/azure-storage/azurite
-        ports:
-          - 10000:10000
-          - 10001:10001
-          - 10002:10002
-
     steps:
       - uses: actions/checkout@v5
 
@@ -87,6 +79,25 @@ jobs:
             6.0.x
             8.0.x
           global-json-file: global.json
+
+      - name: Start Azurite
+        run: |
+          docker run -d \
+            -p 10000:10000 -p 10001:10001 -p 10002:10002 \
+            mcr.microsoft.com/azure-storage/azurite \
+            azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 \
+                    --skipApiVersionCheck
+
+      - name: Wait for Azurite to be ready
+        run: |
+          for i in $(seq 1 15); do
+            if curl -sf "http://localhost:10001/devstoreaccount1"; then
+              echo "Azurite is ready"
+              break
+            fi
+            echo "Waiting for Azurite... ($i/15)"
+            sleep 2
+          done
 
       - name: Restore
         run: dotnet restore
