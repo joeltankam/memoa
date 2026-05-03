@@ -37,6 +37,15 @@ memoa-replay \
 | `--delay` | `0` | Fixed delay between requests in ms (only when `--timeline none`) |
 | `--dry-run` | `false` | Print requests without sending |
 
+### Authentication
+
+| Option | Description |
+|--------|-------------|
+| `--auth-token` | Bearer token sent as `Authorization: Bearer {token}` to the target |
+| `--auth-header` | Custom auth header in `Name:Value` format (e.g., `X-Api-Key:secret`) |
+
+`--auth-token` and `--auth-header` are mutually exclusive.
+
 ### Query Filters
 
 | Option | Description |
@@ -134,6 +143,26 @@ memoa-replay \
   -t https://load-test.example.com \
   --parallelism 10 \
   --delay 100
+```
+
+### Replay with bearer token authentication
+
+```bash
+memoa-replay \
+  --source azure \
+  -c "UseDevelopmentStorage=true" \
+  -t https://staging.api.example.com \
+  --auth-token "eyJhbGciOiJIUzI1NiIs..."
+```
+
+### Replay with custom API key header
+
+```bash
+memoa-replay \
+  --source file \
+  -d ./captured-requests \
+  -t https://staging.api.example.com \
+  --auth-header "X-Api-Key:my-secret-key"
 ```
 
 ### Dry run to preview

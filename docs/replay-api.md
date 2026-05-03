@@ -50,7 +50,10 @@ app.Run();
       "ApiKeyHeaderName": "X-Api-Key",
       "ApiKey": "my-secret-key",
       "DefaultTimelineMode": "None",
-      "MaxParallelism": 10
+      "MaxParallelism": 10,
+      "TargetAuthentication": {
+        "BearerToken": "eyJhbGciOiJIUzI1NiIs..."
+      }
     }
   }
 }
@@ -98,9 +101,13 @@ Trigger a fire-and-forget replay session. Returns immediately with `202 Accepted
   "timelineMode": "Relative",
   "parallelism": 5,
   "targetBaseUrl": "https://staging.api.example.com",
-  "dryRun": false
+  "dryRun": false,
+  "authBearerToken": "eyJhbGciOiJIUzI1NiIs..."
 }
 ```
+
+The `authBearerToken` field is optional. When provided, it overrides the server-configured
+`TargetAuthentication` for this job only.
 
 **Response:** `202 Accepted`
 
@@ -191,6 +198,46 @@ distinguish replay traffic from live traffic.
 | `TargetBaseUrl` | `string?` | `null` | Default replay target (null = self) |
 | `DefaultTimelineMode` | `TimelineMode` | `None` | Default timeline mode |
 | `MaxParallelism` | `int` | `10` | Max allowed parallelism per job |
+| `TargetAuthentication` | `ReplayAuthentication?` | `null` | Default auth for the replay target (see below) |
+
+## Target Authentication
+
+Configure how the replay engine authenticates with the target when forwarding captured requests.
+This applies to all replay jobs unless overridden by `authBearerToken` in the request body.
+
+```csharp
+builder.Services.AddMemoaReplay(options =>
+{
+    options.TargetBaseUrl = "https://staging.api.example.com";
+    options.TargetAuthentication = new ReplayAuthentication
+    {
+        BearerToken = "eyJhbGciOiJIUzI1NiIs..."
+    };
+});
+```
+
+Alternatively, use a custom header:
+
+```csharp
+options.TargetAuthentication = new ReplayAuthentication
+{
+    HeaderName = "X-Api-Key",
+    HeaderValue = "my-secret-key"
+};
+```
+
+For advanced scenarios (OAuth token refresh, HMAC signing), use the `ConfigureRequest` callback:
+
+```csharp
+options.TargetAuthentication = new ReplayAuthentication
+{
+    ConfigureRequest = msg =>
+    {
+        var token = GetFreshOAuthToken();
+        msg.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+};
+```
 
 ## Prerequisites
 
