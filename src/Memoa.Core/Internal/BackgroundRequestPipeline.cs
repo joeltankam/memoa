@@ -103,7 +103,11 @@ internal sealed class BackgroundRequestPipeline : IRequestPipeline, IHostedServi
             _logger.LogWarning("Memoa background pipeline shutdown timed out after {Timeout}", _options.ShutdownTimeout);
         }
 
+#if NET8_0_OR_GREATER
         await _cts.CancelAsync().ConfigureAwait(false);
+#else
+        _cts.Cancel();
+#endif
     }
 
     private async Task ProcessAsync(int workerId, CancellationToken cancellationToken)
