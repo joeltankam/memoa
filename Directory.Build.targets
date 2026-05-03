@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="Current">
+
+  <!-- Auto-include Docker files to publish directory
+       We could have done something like:
+         <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/Dockerfile')">
+           <None Update="$(MSBuildProjectDirectory)/Dockerfile">
+             <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+           </None>
+         </ItemGroup>
+       But it doesn't work in case a project which has a Dockerfile depends on another project which also does:
+          error NETSDK1152: Found multiple publish output files with the same relative path: src...\Dockerfile, src\...\Dockerfile.
+  -->
+  <Target Name="CopyDockerfileToOutputDirectory" AfterTargets="ComputeResolvedFilesToPublishList" Condition="Exists('$(MSBuildProjectDirectory)/Dockerfile')">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="$(MSBuildProjectDirectory)/Dockerfile">
+        <RelativePath>Dockerfile</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+  <!-- Analyzers -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Allow Test project to access internal members -->
+  <ItemGroup>
+    <!-- Test project -->
+    <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+    <!-- Moq -->
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <!-- Include packages needed to run tests using .NET CLI. More information : https://docs.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-nunit -->
+  <ItemGroup Condition="$(IsTestProject)">
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="NunitXml.TestLogger" />
+    <!-- Analyzers -->
+    <PackageReference Include="FluentAssertions.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="NUnit.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

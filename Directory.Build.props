@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <PropertyGroup Label="CI/CD">
+    <IsCIBuild Condition="'$(IsCIBuild)' == ''">false</IsCIBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Paths">
+    <RepositoryRoot>$(MSBuildThisFileDirectory.TrimEnd('\'))</RepositoryRoot>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Compilation">
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Output">
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Debug information">
+    <DebugType Condition="'$(DebugType)' == ''">embedded</DebugType>
+    <PathMap Condition="'$(DebugType)' == '' AND '$(IsCIBuild)' == 'true'">$(RepositoryRoot)=sources</PathMap>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Tests">
+    <IsTestProject>false</IsTestProject>
+    <IsTestProject Condition="$(MSBuildProjectName.EndsWith('Tests'))">true</IsTestProject>
+    <RunSettingsFilePath Condition="$(IsTestProject)">$(RepositoryRoot)\build\Config\Tests.runsettings</RunSettingsFilePath>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Publishing">
+    <IsPublishable Condition="'$(IsPublishable)' == ''">false</IsPublishable>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Packaging">
+    <IsPackable Condition="'$(IsPackable)' == ''">false</IsPackable>
+    <PackageTags Condition="'$(PackageTags)' == ''">$(MSBuildProjectName.Replace('.', ';'))</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Code analysis">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <Import Project="$(RepositoryRoot)/Version.props" />
+
+</Project>

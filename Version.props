@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="Current">
+  <PropertyGroup>
+    <!--
+      We use Semantic Versioning: http://semver.org/
+
+      Version: NuGet package version, we add a suffix for development versions, default is "-pre".
+      AssemblyVersion: Version as known by other assemblies.
+      FileVersion: Assembly property that links it to a specific build.
+    -->
+    <Version>0.0.1</Version>
+
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <FileVersion Condition="'$(BuildCounter)' != ''">$(Version).$(BuildCounter)</FileVersion>
+    <!-- $(VersionSuffix) is set in CI/CD -->
+    <VersionSuffix Condition="'$(VersionSuffix)' == '' and '$(IsCIBuild)' == 'false'">-pre</VersionSuffix>
+    <Version>$(Version)$(VersionSuffix)</Version>
+
+    <Authors>joel.tankam</Authors>
+    <Company>Joel Tankam</Company>
+    <Product>$(MSBuildProjectName.Replace('.', ''))</Product>
+    <Copyright>Copyright (c) $(Company) $([System.DateTime]::UtcNow.ToString('yyyy'))</Copyright>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <Import Project="$(MSBuildThisFileDirectory)/Common.props" Condition="'$(CommonPropsImported)' != 'true'" />
+
+  <Target Name="RunUnitTests">
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="RunTests" Properties="ExcludedCategories=Integration,Chain;TestType=Unit" />
+  </Target>
+
+  <Target Name="RunIntegrationTests">
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="RunTests" Properties="IncludedCategories=Integration;TestType=Integration" />
+  </Target>
+
+  <Target Name="RunTests">
+    <ItemGroup>
+      <ExcludedCategories Include="$(ExcludedCategories.Split(','))" Condition="'$(ExcludedCategories)' != ''" />
+      <IncludedCategories Include="$(IncludedCategories.Split(','))" Condition="'$(IncludedCategories)' != ''" />
+    </ItemGroup>
+    <PropertyGroup>
+      <TestFilterArg Condition="'@(ExcludedCategories)' != ''">$(TestFilterArg)@(ExcludedCategories->'TestCategory!=%(Identity)', '&amp;')</TestFilterArg>
+      <TestFilterArg Condition="'$(TestFilterArg)' != '' and '@(IncludedCategories)' != ''">$(TestFilterArg)&amp;</TestFilterArg>
+      <TestFilterArg Condition="'@(IncludedCategories)' != ''">$(TestFilterArg)@(IncludedCategories->'TestCategory=%(Identity)', '&amp;')</TestFilterArg>
+      <TestVerbosity Condition="'$(TestVerbosity)' == ''">minimal</TestVerbosity>
+
+      <TestArguments>$(TestArguments) &quot;$(SolutionFile)&quot;</TestArguments>
+      <TestArguments>$(TestArguments) --nologo</TestArguments>
+      <TestArguments>$(TestArguments) --no-build</TestArguments>
+      <TestArguments Condition="'$(TestFilterArg)' != ''">$(TestArguments) --filter &quot;$(TestFilterArg)&quot;</TestArguments>
+      <TestArguments>$(TestArguments) --settings &quot;$(RepositoryRoot)/build/Config/Tests.runsettings&quot;</TestArguments>
+      <TestArguments>$(TestArguments) --verbosity $(TestVerbosity)</TestArguments>
+      <TestArguments>$(TestArguments) --configuration $(Configuration)</TestArguments>
+      <TestArguments>$(TestArguments) --results-directory $(RootArtifactsPath)/results/Tests/$(TestType)</TestArguments>
+      <TestArguments>$(TestArguments) --logger &quot;nunit;LogFileName=TestResult.{assembly}.{framework}.xml&quot;</TestArguments>
+      <TestArguments>$(TestArguments) --logger &quot;html&quot;</TestArguments>
+      <TestArguments Condition="'$(IsTeamCityBuild)' == 'true'">$(TestArguments) --logger &quot;teamcity&quot;</TestArguments>
+      <TestCommand>dotnet test $(TestArguments)</TestCommand>
+    </PropertyGroup>
+    <Message Text="$(TestCommand)" Importance="High" />
+    <Exec Command="$(TestCommand)" WorkingDirectory="$(RepositoryRoot)" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" />
+  </Target>
+</Project>

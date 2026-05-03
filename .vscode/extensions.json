@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "bierner.markdown-preview-github-styles",
+    "streetsidesoftware.code-spell-checker",
+    "hediet.vscode-drawio",
+    "editorconfig.editorconfig",
+    "davidanson.vscode-markdownlint",
+    "yzhang.markdown-all-in-one"
+  ]
+}

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <CommonPropsImported>true</CommonPropsImported>
+  </PropertyGroup>
+
+  <PropertyGroup Label="CI/CD">
+    <IsCIBuild Condition="'$(IsCIBuild)' == ''">false</IsCIBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Paths">
+    <RepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)/../..'))</RepositoryRoot>
+    <SolutionFile>$(RepositoryRoot)/Component.sln</SolutionFile>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Compilation">
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Artifacts">
+    <RootArtifactsPath>$(RepositoryRoot)/artifacts</RootArtifactsPath>
+  </PropertyGroup>
+</Project>

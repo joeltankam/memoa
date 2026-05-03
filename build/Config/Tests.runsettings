@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <!-- https://learn.microsoft.com/en-us/visualstudio/test/configure-unit-tests-by-using-a-dot-runsettings-file -->
+  <RunConfiguration>
+    <MaxCpuCount>4</MaxCpuCount>
+    <TestSessionTimeout>1200000</TestSessionTimeout><!-- In milliseconds -->
+    <TreatNoTestsAsError>true</TreatNoTestsAsError>
+  </RunConfiguration>
+</RunSettings>
