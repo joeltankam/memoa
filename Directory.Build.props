@@ -41,6 +41,8 @@
 
   <PropertyGroup Label="Code analysis">
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Suppress ConfigureAwait requirement in test projects — NUnit handles synchronization context -->
+    <NoWarn Condition="$(IsTestProject)">$(NoWarn);VSTHRD111</NoWarn>
   </PropertyGroup>
 
   <Import Project="$(RepositoryRoot)/Version.props" />
