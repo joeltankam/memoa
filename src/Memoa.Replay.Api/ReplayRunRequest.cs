@@ -51,4 +51,9 @@ public sealed class ReplayRunRequest
     /// When <c>true</c>, requests are logged but not sent.
     /// </summary>
     public bool DryRun { get; set; }
+
+    /// <summary>
+    /// Bearer token for target authentication. Overrides the server default.
+    /// </summary>
+    public string? AuthBearerToken { get; set; }
 }

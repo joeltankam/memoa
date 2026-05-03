@@ -53,4 +53,10 @@ public sealed class MemoaReplayApiOptions
     /// Default: 10.
     /// </summary>
     public int MaxParallelism { get; set; } = 10;
+
+    /// <summary>
+    /// Default authentication configuration for the replay target.
+    /// Applied to all replay jobs unless overridden by the request.
+    /// </summary>
+    public ReplayAuthentication? TargetAuthentication { get; set; }
 }

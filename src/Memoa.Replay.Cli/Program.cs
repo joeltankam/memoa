@@ -1,26 +1,28 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using Amazon;
-using Amazon.S3;
-using Azure.Storage.Blobs;
 using Memoa;
 using Memoa.Replay;
-using Memoa.Sinks.AmazonS3;
-using Memoa.Sinks.AzureBlobStorage;
-using Memoa.Sinks.File;
-using Memoa.Sinks.Redis;
-using Microsoft.Extensions.Logging;
+using Memoa.Replay.Cli.Sources;
 using Microsoft.Extensions.Logging.Abstractions;
-using StackExchange.Redis;
 
 namespace Memoa.Replay.Cli;
 
 public class Program
 {
+    private static readonly IReplaySourceProvider[] SourceProviders =
+    [
+        new AzureBlobSourceProvider(),
+        new FileSourceProvider(),
+        new AmazonS3SourceProvider(),
+        new RedisSourceProvider()
+    ];
+
     public static async Task<int> Main(string[] args)
     {
-        // Source selection
-        var sourceOption = new Option<string>("--source", ["-s"]) { Description = "Source backend: azure, file, s3, redis.", Required = true };
+        var sourceNames = string.Join(", ", SourceProviders.Select(static p => p.Name));
+
+        // Core options
+        var sourceOption = new Option<string>("--source", ["-s"]) { Description = $"Source backend: {sourceNames}.", Required = true };
         var targetOption = new Option<string>("--target", ["-t"]) { Description = "Base URL to replay requests against.", Required = true };
 
         // Timeline & pacing
@@ -29,28 +31,15 @@ public class Program
         var delayOption = new Option<int>("--delay") { Description = "Delay between requests in milliseconds (timeline=none only).", DefaultValueFactory = _ => 0 };
         var dryRunOption = new Option<bool>("--dry-run") { Description = "Print requests without sending them." };
 
+        // Authentication options
+        var authTokenOption = new Option<string?>("--auth-token") { Description = "Bearer token for target authentication." };
+        var authHeaderOption = new Option<string?>("--auth-header") { Description = "Custom auth header in 'Name:Value' format (e.g., 'X-Api-Key:secret')." };
+
         // Query filters
         var fromOption = new Option<DateTimeOffset?>("--from") { Description = "Only replay requests captured after this UTC time." };
         var toOption = new Option<DateTimeOffset?>("--to") { Description = "Only replay requests captured before this UTC time." };
         var methodsOption = new Option<string[]?>("--methods") { Description = "Only replay these HTTP methods." };
         var pathPatternOption = new Option<string?>("--path") { Description = "Glob pattern to filter request paths." };
-
-        // Azure Blob Storage options
-        var connectionStringOption = new Option<string?>("--connection-string", ["-c"]) { Description = "Azure Storage connection string (source=azure)." };
-        var containerOption = new Option<string>("--container") { Description = "Blob container name (source=azure).", DefaultValueFactory = _ => "memoa-requests" };
-        var prefixOption = new Option<string?>("--prefix") { Description = "Blob prefix (source=azure)." };
-
-        // File options
-        var directoryOption = new Option<string?>("--directory", ["-d"]) { Description = "Directory path (source=file)." };
-
-        // Amazon S3 options
-        var bucketOption = new Option<string?>("--bucket") { Description = "S3 bucket name (source=s3)." };
-        var regionOption = new Option<string?>("--region") { Description = "AWS region (source=s3)." };
-        var serviceUrlOption = new Option<string?>("--service-url") { Description = "S3-compatible service URL (source=s3)." };
-
-        // Redis options
-        var redisConnectionOption = new Option<string?>("--redis-connection") { Description = "Redis connection string (source=redis)." };
-        var streamKeyOption = new Option<string>("--stream-key") { Description = "Redis stream key (source=redis).", DefaultValueFactory = _ => "memoa:requests" };
 
         var rootCommand = new RootCommand("Replay HTTP requests captured by Memoa middleware.")
         {
@@ -60,28 +49,27 @@ public class Program
             parallelismOption,
             delayOption,
             dryRunOption,
+            authTokenOption,
+            authHeaderOption,
             fromOption,
             toOption,
             methodsOption,
-            pathPatternOption,
-            connectionStringOption,
-            containerOption,
-            prefixOption,
-            directoryOption,
-            bucketOption,
-            regionOption,
-            serviceUrlOption,
-            redisConnectionOption,
-            streamKeyOption
+            pathPatternOption
         };
+
+        // Register source-specific options from all providers
+        foreach (var provider in SourceProviders)
+        {
+            foreach (var option in provider.GetOptions())
+            {
+                rootCommand.Add(option);
+            }
+        }
 
         rootCommand.Action = new ReplayAction(
             sourceOption, targetOption, timelineOption, parallelismOption, delayOption, dryRunOption,
-            fromOption, toOption, methodsOption, pathPatternOption,
-            connectionStringOption, containerOption, prefixOption,
-            directoryOption,
-            bucketOption, regionOption, serviceUrlOption,
-            redisConnectionOption, streamKeyOption);
+            authTokenOption, authHeaderOption,
+            fromOption, toOption, methodsOption, pathPatternOption);
 
         var config = new CommandLineConfiguration(rootCommand);
         return await config.InvokeAsync(args).ConfigureAwait(false);
@@ -95,29 +83,19 @@ public class Program
         private readonly Option<int> _parallelism;
         private readonly Option<int> _delay;
         private readonly Option<bool> _dryRun;
+        private readonly Option<string?> _authToken;
+        private readonly Option<string?> _authHeader;
         private readonly Option<DateTimeOffset?> _from;
         private readonly Option<DateTimeOffset?> _to;
         private readonly Option<string[]?> _methods;
         private readonly Option<string?> _pathPattern;
-        private readonly Option<string?> _connectionString;
-        private readonly Option<string> _container;
-        private readonly Option<string?> _prefix;
-        private readonly Option<string?> _directory;
-        private readonly Option<string?> _bucket;
-        private readonly Option<string?> _region;
-        private readonly Option<string?> _serviceUrl;
-        private readonly Option<string?> _redisConnection;
-        private readonly Option<string> _streamKey;
 
         public ReplayAction(
             Option<string> source, Option<string> target, Option<string> timeline,
             Option<int> parallelism, Option<int> delay, Option<bool> dryRun,
+            Option<string?> authToken, Option<string?> authHeader,
             Option<DateTimeOffset?> from, Option<DateTimeOffset?> to,
-            Option<string[]?> methods, Option<string?> pathPattern,
-            Option<string?> connectionString, Option<string> container, Option<string?> prefix,
-            Option<string?> directory,
-            Option<string?> bucket, Option<string?> region, Option<string?> serviceUrl,
-            Option<string?> redisConnection, Option<string> streamKey)
+            Option<string[]?> methods, Option<string?> pathPattern)
         {
             _source = source;
             _target = target;
@@ -125,24 +103,17 @@ public class Program
             _parallelism = parallelism;
             _delay = delay;
             _dryRun = dryRun;
+            _authToken = authToken;
+            _authHeader = authHeader;
             _from = from;
             _to = to;
             _methods = methods;
             _pathPattern = pathPattern;
-            _connectionString = connectionString;
-            _container = container;
-            _prefix = prefix;
-            _directory = directory;
-            _bucket = bucket;
-            _region = region;
-            _serviceUrl = serviceUrl;
-            _redisConnection = redisConnection;
-            _streamKey = streamKey;
         }
 
         public override async Task<int> InvokeAsync(ParseResult parseResult, CancellationToken cancellationToken = default)
         {
-            var source = parseResult.GetValue(_source)!;
+            var sourceName = parseResult.GetValue(_source)!;
             var target = parseResult.GetValue(_target)!;
             var timelineStr = parseResult.GetValue(_timeline)!;
             var parallelism = parseResult.GetValue(_parallelism);
@@ -161,10 +132,19 @@ public class Program
                 PathPattern = parseResult.GetValue(_pathPattern)
             };
 
+            // Resolve source provider
+            var provider = SourceProviders.FirstOrDefault(p => p.Name.Equals(sourceName, StringComparison.OrdinalIgnoreCase));
+            if (provider is null)
+            {
+                var supported = string.Join(", ", SourceProviders.Select(static p => p.Name));
+                await Console.Error.WriteLineAsync($"Error: Unknown source '{sourceName}'. Supported: {supported}").ConfigureAwait(false);
+                return 1;
+            }
+
             IRequestSource requestSource;
             try
             {
-                requestSource = CreateSource(source, parseResult);
+                requestSource = provider.CreateSource(parseResult);
             }
             catch (InvalidOperationException ex)
             {
@@ -172,13 +152,17 @@ public class Program
                 return 1;
             }
 
+            // Build authentication
+            var authentication = BuildAuthentication(parseResult);
+
             var replayOptions = new ReplayOptions
             {
                 Mode = timelineMode,
                 Parallelism = parallelism,
                 DelayMs = delay,
                 DryRun = dryRun,
-                TargetBaseUrl = target
+                TargetBaseUrl = target,
+                Authentication = authentication
             };
 
             using var httpClient = new HttpClient { BaseAddress = new Uri(target) };
@@ -209,88 +193,32 @@ public class Program
             return result.Failed > 0 ? 1 : 0;
         }
 
-        private IRequestSource CreateSource(string source, ParseResult parseResult)
+        private ReplayAuthentication? BuildAuthentication(ParseResult parseResult)
         {
-            return source.ToLowerInvariant() switch
+            var bearerToken = parseResult.GetValue(_authToken);
+            var authHeader = parseResult.GetValue(_authHeader);
+
+            if (!string.IsNullOrEmpty(bearerToken))
             {
-                "azure" => CreateAzureSource(parseResult),
-                "file" => CreateFileSource(parseResult),
-                "s3" => CreateS3Source(parseResult),
-                "redis" => CreateRedisSource(parseResult),
-                _ => throw new InvalidOperationException($"Unknown source '{source}'. Supported: azure, file, s3, redis.")
-            };
-        }
-
-        private IRequestSource CreateAzureSource(ParseResult parseResult)
-        {
-            var connectionString = parseResult.GetValue(_connectionString)
-                ?? throw new InvalidOperationException("--connection-string is required for source=azure.");
-            var container = parseResult.GetValue(_container)!;
-            var prefix = parseResult.GetValue(_prefix);
-
-            var options = new AzureBlobStorageSinkOptions
-            {
-                ConnectionString = connectionString,
-                ContainerName = container,
-                BlobPrefix = prefix
-            };
-
-            var containerClient = new BlobContainerClient(connectionString, container);
-            return new AzureBlobStorageSink(containerClient, options, NullLogger<AzureBlobStorageSink>.Instance);
-        }
-
-        private IRequestSource CreateFileSource(ParseResult parseResult)
-        {
-            var directory = parseResult.GetValue(_directory)
-                ?? throw new InvalidOperationException("--directory is required for source=file.");
-
-            var options = new FileSinkOptions { OutputDirectory = directory };
-            return new FileSink(options, NullLogger<FileSink>.Instance);
-        }
-
-        private IRequestSource CreateS3Source(ParseResult parseResult)
-        {
-            var bucket = parseResult.GetValue(_bucket)
-                ?? throw new InvalidOperationException("--bucket is required for source=s3.");
-            var region = parseResult.GetValue(_region);
-            var serviceUrl = parseResult.GetValue(_serviceUrl);
-
-            var options = new AmazonS3SinkOptions
-            {
-                BucketName = bucket,
-                Region = region,
-                ServiceUrl = serviceUrl
-            };
-
-            var s3Config = new AmazonS3Config();
-            if (!string.IsNullOrEmpty(serviceUrl))
-            {
-                s3Config.ServiceURL = serviceUrl;
-                s3Config.ForcePathStyle = true;
-            }
-            else if (!string.IsNullOrEmpty(region))
-            {
-                s3Config.RegionEndpoint = RegionEndpoint.GetBySystemName(region);
+                return new ReplayAuthentication { BearerToken = bearerToken };
             }
 
-            var s3Client = new AmazonS3Client(s3Config);
-            return new AmazonS3Sink(s3Client, options, NullLogger<AmazonS3Sink>.Instance);
-        }
-
-        private IRequestSource CreateRedisSource(ParseResult parseResult)
-        {
-            var redisConnection = parseResult.GetValue(_redisConnection)
-                ?? throw new InvalidOperationException("--redis-connection is required for source=redis.");
-            var streamKey = parseResult.GetValue(_streamKey)!;
-
-            var options = new RedisSinkOptions
+            if (!string.IsNullOrEmpty(authHeader))
             {
-                ConnectionString = redisConnection,
-                StreamKey = streamKey
-            };
+                var separatorIndex = authHeader.IndexOf(':');
+                if (separatorIndex <= 0)
+                {
+                    throw new InvalidOperationException("--auth-header must be in 'Name:Value' format (e.g., 'X-Api-Key:secret').");
+                }
 
-            var multiplexer = ConnectionMultiplexer.Connect(redisConnection);
-            return new RedisSink(multiplexer, options, NullLogger<RedisSink>.Instance);
+                return new ReplayAuthentication
+                {
+                    HeaderName = authHeader[..separatorIndex],
+                    HeaderValue = authHeader[(separatorIndex + 1)..]
+                };
+            }
+
+            return null;
         }
     }
 }

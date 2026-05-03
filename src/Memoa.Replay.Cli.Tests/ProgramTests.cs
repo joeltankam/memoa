@@ -31,6 +31,8 @@ internal class ProgramTests
             output.Should().Contain("--target");
             output.Should().Contain("--timeline");
             output.Should().Contain("--dry-run");
+            output.Should().Contain("--auth-token");
+            output.Should().Contain("--auth-header");
             output.Should().Contain("--connection-string");
             output.Should().Contain("--directory");
             output.Should().Contain("--bucket");

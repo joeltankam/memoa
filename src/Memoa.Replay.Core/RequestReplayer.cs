@@ -152,6 +152,7 @@ public sealed class RequestReplayer
         try
         {
             using var message = BuildHttpRequestMessage(request);
+            ApplyAuthentication(message);
             using var response = await _httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
 
             _logger.LogDebug("Replayed {Method} {Path} → {StatusCode}", request.Method, request.Path, (int)response.StatusCode);
@@ -206,6 +207,26 @@ public sealed class RequestReplayer
         }
 
         return message;
+    }
+
+    private void ApplyAuthentication(HttpRequestMessage message)
+    {
+        var auth = _options.Authentication;
+        if (auth is null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(auth.BearerToken))
+        {
+            message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.BearerToken);
+        }
+        else if (!string.IsNullOrEmpty(auth.HeaderName) && !string.IsNullOrEmpty(auth.HeaderValue))
+        {
+            message.Headers.TryAddWithoutValidation(auth.HeaderName, auth.HeaderValue);
+        }
+
+        auth.ConfigureRequest?.Invoke(message);
     }
 
     private static async Task<List<RecordedRequest>> CollectAndSortAsync(

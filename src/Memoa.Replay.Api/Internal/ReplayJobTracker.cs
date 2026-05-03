@@ -84,7 +84,8 @@ internal sealed class ReplayJobTracker
                 Mode = timelineMode,
                 Parallelism = parallelism,
                 DryRun = request.DryRun,
-                TargetBaseUrl = targetBaseUrl
+                TargetBaseUrl = targetBaseUrl,
+                Authentication = BuildAuthentication(request)
             };
 
             var replayer = new RequestReplayer(httpClient, replayOptions, _logger as ILogger<RequestReplayer> ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<RequestReplayer>.Instance);
@@ -124,6 +125,16 @@ internal sealed class ReplayJobTracker
                 state.Result = new ReplayResult(0, 0, 0);
             }
         }
+    }
+
+    private ReplayAuthentication? BuildAuthentication(ReplayRunRequest request)
+    {
+        if (!string.IsNullOrEmpty(request.AuthBearerToken))
+        {
+            return new ReplayAuthentication { BearerToken = request.AuthBearerToken };
+        }
+
+        return _options.TargetAuthentication;
     }
 
     internal sealed class ReplayJobState

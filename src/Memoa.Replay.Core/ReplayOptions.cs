@@ -33,4 +33,10 @@ public sealed class ReplayOptions
     /// The base URL to replay requests against (e.g., <c>https://localhost:5001</c>).
     /// </summary>
     public string? TargetBaseUrl { get; set; }
+
+    /// <summary>
+    /// Authentication configuration for the replay target.
+    /// When set, authentication headers are applied to every replayed request.
+    /// </summary>
+    public ReplayAuthentication? Authentication { get; set; }
 }
