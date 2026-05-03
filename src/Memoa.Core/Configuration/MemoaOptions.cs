@@ -31,6 +31,11 @@ public sealed class MemoaOptions
     public MemoaPipelineOptions Pipeline { get; set; } = new();
 
     /// <summary>
+    /// Configures request sampling. Default: capture all requests (<c>Rate = 1.0</c>).
+    /// </summary>
+    public MemoaSamplingOptions Sampling { get; set; } = new();
+
+    /// <summary>
     /// The name of the HTTP header to use as correlation identifier.
     /// Default: <c>"X-Correlation-Id"</c>.
     /// </summary>

@@ -61,6 +61,9 @@ builder.Services
       "WorkerCount": 1,
       "ShutdownTimeout": "00:00:30"
     },
+    "Sampling": {
+      "Rate": 1.0
+    },
     "Sinks": {
       "File": { ... },
       "AzureBlobStorage": { ... },
@@ -112,6 +115,16 @@ builder.Services
 | `FullMode` | `ChannelFullMode` | `DropWrite` | Behavior when channel is full: `Wait`, `DropOldest`, `DropWrite` |
 | `WorkerCount` | `int` | `1` | Number of background workers writing to sinks |
 | `ShutdownTimeout` | `TimeSpan` | `30s` | Max time to drain the channel on app shutdown |
+
+### Sampling Options (`MemoaSamplingOptions`)
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Rate` | `double` | `1.0` | Fraction of requests to capture: `0.0` = none, `1.0` = all |
+
+Sampling is applied **after** path/method filters, so excluded requests do not consume the
+sampling budget. A `Rate` of `0.5` captures approximately half of all requests that pass
+the filter.
 
 ## Sink Configuration
 

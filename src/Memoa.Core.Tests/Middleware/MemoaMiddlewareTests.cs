@@ -379,4 +379,55 @@ internal class MemoaMiddlewareTests
         await host.StopAsync();
         host.Dispose();
     }
+
+    [Test]
+    public async Task Middleware_ShouldSkipAllRequests_WhenSamplingRateIsZero()
+    {
+        // Arrange
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.Sampling.Rate = 0.0;
+        });
+
+        // Act
+        for (var i = 0; i < 10; i++)
+        {
+            await client.GetAsync("/api/test");
+        }
+
+        // Assert — nothing should be captured when rate is 0
+        sinkMock.Verify(
+            s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldCaptureAllRequests_WhenSamplingRateIsFull()
+    {
+        // Arrange
+        var callCount = 0;
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.Sampling.Rate = 1.0;
+        });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((_, _) => Interlocked.Increment(ref callCount))
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        for (var i = 0; i < 5; i++)
+        {
+            await client.GetAsync("/api/test");
+        }
+
+        // Assert — all 5 requests captured when rate is 1.0
+        callCount.Should().Be(5);
+
+        await host.StopAsync();
+        host.Dispose();
+    }
 }

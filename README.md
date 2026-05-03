@@ -61,6 +61,9 @@ Bind from `appsettings.json`:
       "ChannelCapacity": 1024,
       "WorkerCount": 1,
       "FullMode": "DropWrite"
+    },
+    "Sampling": {
+      "Rate": 1.0
     }
   }
 }

@@ -59,6 +59,14 @@ internal sealed class MemoaMiddleware
             return;
         }
 
+        // Apply sampling — evaluated after filters so excluded paths don't consume the sample budget
+        if (options.Sampling.Rate < 1.0 && Random.Shared.NextDouble() >= options.Sampling.Rate)
+        {
+            MemoaDiagnostics.RequestsSkipped.Add(1);
+            await _next(context).ConfigureAwait(false);
+            return;
+        }
+
         using var activity = MemoaDiagnostics.ActivitySource.StartActivity("memoa.capture");
 
         var requestId = Guid.NewGuid();
