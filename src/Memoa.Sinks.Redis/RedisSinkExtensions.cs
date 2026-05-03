@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
@@ -50,6 +51,38 @@ public static class RedisSinkExtensions
     {
         var options = new RedisSinkOptions();
         configure?.Invoke(options);
+
+        sinkBuilder.Services.AddSingleton(options);
+        sinkBuilder.Services.AddSingleton<IRequestSink>(sp =>
+        {
+            return new RedisSink(
+                sp.GetRequiredService<IConnectionMultiplexer>(),
+                sp.GetRequiredService<RedisSinkOptions>(),
+                sp.GetRequiredService<ILogger<RedisSink>>());
+        });
+
+        return sinkBuilder;
+    }
+
+    /// <summary>
+    /// Configures Memoa to write captured requests to a Redis Stream using configuration.
+    /// Requires a <c>ConnectionString</c> property in the bound configuration section.
+    /// </summary>
+    /// <param name="sinkBuilder">The sink builder.</param>
+    /// <param name="configuration">The configuration section to bind <see cref="RedisSinkOptions"/> from.</param>
+    /// <returns>The sink builder for chaining.</returns>
+    public static MemoaSinkBuilder Redis(
+        this MemoaSinkBuilder sinkBuilder,
+        IConfiguration configuration)
+    {
+        var options = new RedisSinkOptions();
+        configuration.Bind(options);
+
+        if (!string.IsNullOrEmpty(options.ConnectionString))
+        {
+            sinkBuilder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+                ConnectionMultiplexer.Connect(options.ConnectionString));
+        }
 
         sinkBuilder.Services.AddSingleton(options);
         sinkBuilder.Services.AddSingleton<IRequestSink>(sp =>

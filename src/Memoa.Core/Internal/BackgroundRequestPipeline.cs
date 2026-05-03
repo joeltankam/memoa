@@ -48,7 +48,9 @@ internal sealed class BackgroundRequestPipeline : IRequestPipeline, IHostedServi
     {
         if (_channel.Writer.TryWrite(request))
         {
+#if NET7_0_OR_GREATER
             MemoaDiagnostics.ChannelQueueSize.Add(1);
+#endif
             return ValueTask.CompletedTask;
         }
 
@@ -67,7 +69,9 @@ internal sealed class BackgroundRequestPipeline : IRequestPipeline, IHostedServi
     private async ValueTask WriteWithWaitAsync(RecordedRequest request, CancellationToken cancellationToken)
     {
         await _channel.Writer.WriteAsync(request, cancellationToken).ConfigureAwait(false);
+#if NET7_0_OR_GREATER
         MemoaDiagnostics.ChannelQueueSize.Add(1);
+#endif
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -118,7 +122,9 @@ internal sealed class BackgroundRequestPipeline : IRequestPipeline, IHostedServi
         {
             await foreach (var request in _channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
             {
+#if NET7_0_OR_GREATER
                 MemoaDiagnostics.ChannelQueueSize.Add(-1);
+#endif
                 await WriteSinksAsync(request, cancellationToken).ConfigureAwait(false);
             }
         }

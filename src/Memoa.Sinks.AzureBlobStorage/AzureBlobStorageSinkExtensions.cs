@@ -1,4 +1,5 @@
 using Azure.Storage.Blobs;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -57,6 +58,42 @@ public static class AzureBlobStorageSinkExtensions
         sinkBuilder.Services.AddSingleton(options);
         sinkBuilder.Services.AddSingleton(sp =>
         {
+            var serviceClient = sp.GetRequiredService<BlobServiceClient>();
+            return serviceClient.GetBlobContainerClient(options.ContainerName);
+        });
+        sinkBuilder.Services.AddSingleton<IRequestSink>(sp =>
+        {
+            return new AzureBlobStorageSink(
+                sp.GetRequiredService<BlobContainerClient>(),
+                sp.GetRequiredService<AzureBlobStorageSinkOptions>(),
+                sp.GetRequiredService<ILogger<AzureBlobStorageSink>>());
+        });
+
+        return sinkBuilder;
+    }
+
+    /// <summary>
+    /// Configures Memoa to write captured requests to Azure Blob Storage using configuration.
+    /// Requires a <c>ConnectionString</c> property in the bound configuration section.
+    /// </summary>
+    /// <param name="sinkBuilder">The sink builder.</param>
+    /// <param name="configuration">The configuration section to bind <see cref="AzureBlobStorageSinkOptions"/> from.</param>
+    /// <returns>The sink builder for chaining.</returns>
+    public static MemoaSinkBuilder AzureBlobStorage(
+        this MemoaSinkBuilder sinkBuilder,
+        IConfiguration configuration)
+    {
+        var options = new AzureBlobStorageSinkOptions();
+        configuration.Bind(options);
+
+        sinkBuilder.Services.AddSingleton(options);
+        sinkBuilder.Services.AddSingleton(sp =>
+        {
+            if (!string.IsNullOrEmpty(options.ConnectionString))
+            {
+                return new BlobContainerClient(options.ConnectionString, options.ContainerName);
+            }
+
             var serviceClient = sp.GetRequiredService<BlobServiceClient>();
             return serviceClient.GetBlobContainerClient(options.ContainerName);
         });

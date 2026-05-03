@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Memoa;
@@ -11,6 +12,12 @@ public interface IMemoaBuilder
     /// The service collection being configured.
     /// </summary>
     IServiceCollection Services { get; }
+
+    /// <summary>
+    /// The configuration section used to configure Memoa, if available.
+    /// May be <c>null</c> when programmatic configuration is used.
+    /// </summary>
+    IConfiguration? Configuration { get; }
 
     /// <summary>
     /// Fluent entry point for registering sinks (e.g., <c>builder.WriteTo.AzureBlobStorage(...)</c>).

@@ -36,9 +36,11 @@ internal static class MemoaDiagnostics
         unit: "ms",
         description: "Duration of sink write operations in milliseconds.");
 
+#if NET7_0_OR_GREATER
     public static readonly UpDownCounter<int> ChannelQueueSize = Meter.CreateUpDownCounter<int>(
         "memoa.channel.queue_size",
         description: "Current number of requests queued in the background channel.");
+#endif
 
     public static readonly Counter<long> RequestsSkipped = Meter.CreateCounter<long>(
         "memoa.requests.skipped",

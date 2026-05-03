@@ -1,5 +1,6 @@
 using Amazon;
 using Amazon.S3;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -29,6 +30,49 @@ public static class AmazonS3SinkExtensions
         sinkBuilder.Services.AddSingleton(options);
 
         // Only register a client if one isn't already registered
+        sinkBuilder.Services.TryAddSingleton<IAmazonS3>(_ =>
+        {
+            var config = new AmazonS3Config();
+
+            if (!string.IsNullOrEmpty(options.ServiceUrl))
+            {
+                config.ServiceURL = options.ServiceUrl;
+                config.ForcePathStyle = options.ForcePathStyle;
+            }
+            else if (!string.IsNullOrEmpty(options.Region))
+            {
+                config.RegionEndpoint = RegionEndpoint.GetBySystemName(options.Region);
+            }
+
+            return new AmazonS3Client(config);
+        });
+
+        sinkBuilder.Services.AddSingleton<IRequestSink>(sp =>
+        {
+            return new AmazonS3Sink(
+                sp.GetRequiredService<IAmazonS3>(),
+                sp.GetRequiredService<AmazonS3SinkOptions>(),
+                sp.GetRequiredService<ILogger<AmazonS3Sink>>());
+        });
+
+        return sinkBuilder;
+    }
+
+    /// <summary>
+    /// Configures Memoa to write captured requests to Amazon S3 using configuration.
+    /// </summary>
+    /// <param name="sinkBuilder">The sink builder.</param>
+    /// <param name="configuration">The configuration section to bind <see cref="AmazonS3SinkOptions"/> from.</param>
+    /// <returns>The sink builder for chaining.</returns>
+    public static MemoaSinkBuilder AmazonS3(
+        this MemoaSinkBuilder sinkBuilder,
+        IConfiguration configuration)
+    {
+        var options = new AmazonS3SinkOptions();
+        configuration.Bind(options);
+
+        sinkBuilder.Services.AddSingleton(options);
+
         sinkBuilder.Services.TryAddSingleton<IAmazonS3>(_ =>
         {
             var config = new AmazonS3Config();

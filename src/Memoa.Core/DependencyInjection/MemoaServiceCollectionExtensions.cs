@@ -24,7 +24,7 @@ public static class MemoaServiceCollectionExtensions
             services.Configure(configure);
         }
 
-        return AddCoreServices(services);
+        return AddCoreServices(services, configuration: null);
     }
 
     /// <summary>
@@ -36,10 +36,10 @@ public static class MemoaServiceCollectionExtensions
     public static IMemoaBuilder AddMemoa(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<MemoaOptions>(configuration);
-        return AddCoreServices(services);
+        return AddCoreServices(services, configuration);
     }
 
-    private static IMemoaBuilder AddCoreServices(IServiceCollection services)
+    private static IMemoaBuilder AddCoreServices(IServiceCollection services, IConfiguration? configuration)
     {
         // Register the pipeline implementations
         services.TryAddSingleton<InlineRequestPipeline>();
@@ -70,7 +70,7 @@ public static class MemoaServiceCollectionExtensions
             return new NoOpHostedService();
         });
 
-        return new MemoaBuilder(services);
+        return new MemoaBuilder(services, configuration);
     }
 
     private sealed class NoOpHostedService : IHostedService

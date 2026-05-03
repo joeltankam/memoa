@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+    <TargetFrameworks>$(MemoaLibraryTargetFrameworks)</TargetFrameworks>
     <IsPackable>true</IsPackable>
     <Description>Redis sink for Memoa HTTP request capture middleware.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

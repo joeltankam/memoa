@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Memoa;
@@ -13,8 +14,15 @@ public sealed class MemoaSinkBuilder
     /// </summary>
     public IServiceCollection Services { get; }
 
-    internal MemoaSinkBuilder(IServiceCollection services)
+    /// <summary>
+    /// The "Sinks" configuration section, if available.
+    /// Sink extensions can use this to bind their options from appsettings.
+    /// </summary>
+    public IConfiguration? Configuration { get; }
+
+    internal MemoaSinkBuilder(IServiceCollection services, IConfiguration? configuration = null)
     {
         Services = services;
+        Configuration = configuration;
     }
 }

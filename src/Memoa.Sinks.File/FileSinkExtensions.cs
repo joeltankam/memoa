@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -46,6 +47,30 @@ public static class FileSinkExtensions
     {
         var options = new FileSinkOptions();
         configure?.Invoke(options);
+
+        sinkBuilder.Services.AddSingleton(options);
+        sinkBuilder.Services.AddSingleton<IRequestSink>(sp =>
+        {
+            return new FileSink(
+                sp.GetRequiredService<FileSinkOptions>(),
+                sp.GetRequiredService<ILogger<FileSink>>());
+        });
+
+        return sinkBuilder;
+    }
+
+    /// <summary>
+    /// Configures Memoa to write captured requests to the local file system using configuration.
+    /// </summary>
+    /// <param name="sinkBuilder">The sink builder.</param>
+    /// <param name="configuration">The configuration section to bind <see cref="FileSinkOptions"/> from.</param>
+    /// <returns>The sink builder for chaining.</returns>
+    public static MemoaSinkBuilder FileSystem(
+        this MemoaSinkBuilder sinkBuilder,
+        IConfiguration configuration)
+    {
+        var options = new FileSinkOptions();
+        configuration.Bind(options);
 
         sinkBuilder.Services.AddSingleton(options);
         sinkBuilder.Services.AddSingleton<IRequestSink>(sp =>
