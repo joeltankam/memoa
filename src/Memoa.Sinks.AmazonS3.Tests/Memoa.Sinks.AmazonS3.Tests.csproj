@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- S3 SDK advisory suppression (same as production project) -->
+    <NoWarn>$(NoWarn);NU1901;NU1902</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="NUnit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Memoa.Sinks.AmazonS3\Memoa.Sinks.AmazonS3.csproj" />
+  </ItemGroup>
+
+</Project>

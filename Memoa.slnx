@@ -22,10 +22,13 @@
     <Project Path="src/Memoa.Replay.Core.Tests/Memoa.Replay.Core.Tests.csproj" />
     <Project Path="src/Memoa.Replay.Core/Memoa.Replay.Core.csproj" />
     <Project Path="src/Memoa.Sample.Api/Memoa.Sample.Api.csproj" />
+    <Project Path="src/Memoa.Sinks.AmazonS3.Tests/Memoa.Sinks.AmazonS3.Tests.csproj" />
     <Project Path="src/Memoa.Sinks.AmazonS3/Memoa.Sinks.AmazonS3.csproj" />
     <Project Path="src/Memoa.Sinks.AzureBlobStorage.Tests/Memoa.Sinks.AzureBlobStorage.Tests.csproj" />
     <Project Path="src/Memoa.Sinks.AzureBlobStorage/Memoa.Sinks.AzureBlobStorage.csproj" />
+    <Project Path="src/Memoa.Sinks.File.Tests/Memoa.Sinks.File.Tests.csproj" />
     <Project Path="src/Memoa.Sinks.File/Memoa.Sinks.File.csproj" />
+    <Project Path="src/Memoa.Sinks.Redis.Tests/Memoa.Sinks.Redis.Tests.csproj" />
     <Project Path="src/Memoa.Sinks.Redis/Memoa.Sinks.Redis.csproj" />
   </Folder>
 </Solution>

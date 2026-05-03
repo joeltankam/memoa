@@ -430,4 +430,165 @@ internal class MemoaMiddlewareTests
         await host.StopAsync();
         host.Dispose();
     }
+
+    [Test]
+    public async Task Middleware_ShouldCaptureBinaryBody_WhenIncludeBodyEnabled()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.Capture.IncludeBody = true;
+        });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        var bytes = new byte[] { 0x89, 0x50, 0x4E, 0x47 }; // PNG magic bytes
+        var content = new ByteArrayContent(bytes);
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+
+        // Act
+        await client.PostAsync("/api/upload", content);
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.Body.Should().NotBeNull();
+        captured.Body!.Base64Bytes.Should().NotBeNullOrEmpty();
+        captured.Body.Text.Should().BeNull();
+        Convert.FromBase64String(captured.Body.Base64Bytes!).Should().Equal(bytes);
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldNotCaptureBody_WhenBodyIsEmpty()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.Capture.IncludeBody = true;
+        });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        // Act — GET with no body
+        await client.GetAsync("/api/test");
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.Body.Should().BeNull();
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldTruncateBody_WhenExceedingMaxSize()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.Capture.IncludeBody = true;
+            opts.Capture.MaxBodySizeBytes = 5;
+        });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        var content = new StringContent("Hello, World!", System.Text.Encoding.UTF8, "text/plain");
+
+        // Act
+        await client.PostAsync("/api/test", content);
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.Body.Should().NotBeNull();
+        captured.Body!.Truncated.Should().BeTrue();
+        captured.Body.Text!.Length.Should().BeLessThanOrEqualTo(5);
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldNotCaptureClientIp_WhenDisabled()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost(opts =>
+        {
+            opts.Capture.IncludeClientIp = false;
+        });
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await client.GetAsync("/api/test");
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.ClientIp.Should().BeNull();
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldRecordSchemeAndHost()
+    {
+        // Arrange
+        RecordedRequest? captured = null;
+        var (host, client, sinkMock) = await CreateTestHost();
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => captured = r)
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await client.GetAsync("/api/test");
+
+        // Assert
+        captured.Should().NotBeNull();
+        captured!.Scheme.Should().NotBeNullOrEmpty();
+        captured.Host.Should().NotBeNullOrEmpty();
+        captured.Protocol.Should().NotBeNullOrEmpty();
+
+        await host.StopAsync();
+        host.Dispose();
+    }
+
+    [Test]
+    public async Task Middleware_ShouldAssignUniqueRequestIds()
+    {
+        // Arrange
+        var ids = new System.Collections.Concurrent.ConcurrentBag<Guid>();
+        var (host, client, sinkMock) = await CreateTestHost();
+        sinkMock
+            .Setup(s => s.WriteAsync(It.IsAny<RecordedRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RecordedRequest, CancellationToken>((r, _) => ids.Add(r.Id))
+            .Returns(ValueTask.CompletedTask);
+
+        // Act
+        await client.GetAsync("/api/test");
+        await client.GetAsync("/api/test");
+        await client.GetAsync("/api/test");
+
+        // Assert
+        ids.Should().HaveCount(3);
+        ids.Distinct().Should().HaveCount(3);
+
+        await host.StopAsync();
+        host.Dispose();
+    }
 }
+
