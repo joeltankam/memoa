@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>memoa-replay</ToolCommandName>
+    <Description>CLI tool to replay HTTP requests captured by Memoa middleware.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Memoa.Core\Memoa.Core.csproj" />
+    <ProjectReference Include="..\Memoa.Sinks.AzureBlobStorage\Memoa.Sinks.AzureBlobStorage.csproj" />
+  </ItemGroup>
+
+</Project>

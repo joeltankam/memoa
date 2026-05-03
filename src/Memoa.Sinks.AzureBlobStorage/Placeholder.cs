@@ -1,0 +1,1 @@
+namespace Memoa.Sinks.AzureBlobStorage;

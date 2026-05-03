@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Azure Blob Storage sink for Memoa HTTP request capture middleware.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Microsoft.Extensions.Azure" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Memoa.Core\Memoa.Core.csproj" />
+  </ItemGroup>
+
+</Project>
