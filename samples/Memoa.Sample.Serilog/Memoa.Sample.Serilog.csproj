@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <IsPublishable>true</IsPublishable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Memoa.Core\Memoa.Core.csproj" />
+    <ProjectReference Include="..\..\src\Serilog.Sinks.Memoa\Serilog.Sinks.Memoa.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <IsPublishable>true</IsPublishable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Memoa.Replay.Api\Memoa.Replay.Api.csproj" />
+    <ProjectReference Include="..\..\src\Memoa.Sinks.File\Memoa.Sinks.File.csproj" />
+  </ItemGroup>
+
+</Project>

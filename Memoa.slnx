@@ -1,4 +1,9 @@
 <Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Memoa.Sample.Api/Memoa.Sample.Api.csproj" />
+    <Project Path="samples/Memoa.Sample.Replay/Memoa.Sample.Replay.csproj" />
+    <Project Path="samples/Memoa.Sample.Serilog/Memoa.Sample.Serilog.csproj" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path="Directory.Build.props" />
@@ -18,7 +23,6 @@
     <Project Path="src/Memoa.Replay.Cli/Memoa.Replay.Cli.csproj" />
     <Project Path="src/Memoa.Replay.Core.Tests/Memoa.Replay.Core.Tests.csproj" />
     <Project Path="src/Memoa.Replay.Core/Memoa.Replay.Core.csproj" />
-    <Project Path="samples/Memoa.Sample.Api/Memoa.Sample.Api.csproj" />
     <Project Path="src/Memoa.Sinks.AmazonS3.Tests/Memoa.Sinks.AmazonS3.Tests.csproj" />
     <Project Path="src/Memoa.Sinks.AmazonS3/Memoa.Sinks.AmazonS3.csproj" />
     <Project Path="src/Memoa.Sinks.AzureBlobStorage.Tests/Memoa.Sinks.AzureBlobStorage.Tests.csproj" />
