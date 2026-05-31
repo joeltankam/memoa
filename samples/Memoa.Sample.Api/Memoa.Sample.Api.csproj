@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <IsPublishable>true</IsPublishable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Memoa.Core\Memoa.Core.csproj" />
+    <ProjectReference Include="..\..\src\Memoa.Sinks.AzureBlobStorage\Memoa.Sinks.AzureBlobStorage.csproj" />
+  </ItemGroup>
+
+</Project>
