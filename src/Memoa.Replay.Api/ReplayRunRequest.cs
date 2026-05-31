@@ -1,4 +1,5 @@
 using Memoa.Replay;
+using Memoa.Replay.Authentication;
 
 namespace Memoa.Replay.Api;
 
@@ -54,6 +55,39 @@ public sealed class ReplayRunRequest
 
     /// <summary>
     /// Bearer token for target authentication. Overrides the server default.
+    /// Deprecated: use <see cref="Authentication"/> instead.
     /// </summary>
     public string? AuthBearerToken { get; set; }
+
+    /// <summary>
+    /// Authentication configuration for this replay session.
+    /// Overrides the server default when set.
+    /// </summary>
+    public ReplayRunRequestAuthentication? Authentication { get; set; }
+}
+
+/// <summary>
+/// Authentication options for a replay run request.
+/// </summary>
+public sealed class ReplayRunRequestAuthentication
+{
+    /// <summary>
+    /// Bearer token to use for authentication.
+    /// </summary>
+    public string? BearerToken { get; set; }
+
+    /// <summary>
+    /// Custom header name for authentication (e.g., "X-Api-Key").
+    /// </summary>
+    public string? HeaderName { get; set; }
+
+    /// <summary>
+    /// Custom header value for authentication.
+    /// </summary>
+    public string? HeaderValue { get; set; }
+
+    /// <summary>
+    /// OAuth client credentials for dynamic token acquisition.
+    /// </summary>
+    public OAuthClientCredentialsOptions? OAuthClientCredentials { get; set; }
 }

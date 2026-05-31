@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Memoa.Replay;
+using Memoa.Replay.Authentication;
 using Microsoft.Extensions.Logging;
 
 namespace Memoa.Replay.Api.Internal;
@@ -160,6 +161,30 @@ internal sealed class ReplayJobTracker
 
     private ReplayAuthentication? BuildAuthentication(ReplayRunRequest request)
     {
+        // New Authentication object takes precedence
+        if (request.Authentication is not null)
+        {
+            var auth = request.Authentication;
+            var result = new ReplayAuthentication();
+
+            if (auth.OAuthClientCredentials is not null)
+            {
+                result.OAuthClientCredentials = auth.OAuthClientCredentials;
+            }
+            else if (!string.IsNullOrEmpty(auth.BearerToken))
+            {
+                result.BearerToken = auth.BearerToken;
+            }
+            else if (!string.IsNullOrEmpty(auth.HeaderName) && !string.IsNullOrEmpty(auth.HeaderValue))
+            {
+                result.HeaderName = auth.HeaderName;
+                result.HeaderValue = auth.HeaderValue;
+            }
+
+            return result;
+        }
+
+        // Legacy: AuthBearerToken shorthand (backward compat)
         if (!string.IsNullOrEmpty(request.AuthBearerToken))
         {
             return new ReplayAuthentication { BearerToken = request.AuthBearerToken };

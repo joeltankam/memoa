@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using Memoa;
 using Memoa.Replay;
+using Memoa.Replay.Authentication;
 using Memoa.Replay.Cli.Sources;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -34,6 +35,10 @@ public class Program
         // Authentication options
         var authTokenOption = new Option<string?>("--auth-token") { Description = "Bearer token for target authentication." };
         var authHeaderOption = new Option<string?>("--auth-header") { Description = "Custom auth header in 'Name:Value' format (e.g., 'X-Api-Key:secret')." };
+        var authOAuthEndpointOption = new Option<string?>("--auth-oauth-endpoint") { Description = "OAuth token endpoint URL for client credentials flow." };
+        var authOAuthClientIdOption = new Option<string?>("--auth-oauth-client-id") { Description = "OAuth client ID." };
+        var authOAuthClientSecretOption = new Option<string?>("--auth-oauth-client-secret") { Description = "OAuth client secret." };
+        var authOAuthScopeOption = new Option<string?>("--auth-oauth-scope") { Description = "OAuth scope (e.g., 'api://my-app/.default')." };
 
         // Query filters
         var fromOption = new Option<DateTimeOffset?>("--from") { Description = "Only replay requests captured after this UTC time." };
@@ -51,6 +56,10 @@ public class Program
             dryRunOption,
             authTokenOption,
             authHeaderOption,
+            authOAuthEndpointOption,
+            authOAuthClientIdOption,
+            authOAuthClientSecretOption,
+            authOAuthScopeOption,
             fromOption,
             toOption,
             methodsOption,
@@ -68,7 +77,7 @@ public class Program
 
         rootCommand.Action = new ReplayAction(
             sourceOption, targetOption, timelineOption, parallelismOption, delayOption, dryRunOption,
-            authTokenOption, authHeaderOption,
+            authTokenOption, authHeaderOption, authOAuthEndpointOption, authOAuthClientIdOption, authOAuthClientSecretOption, authOAuthScopeOption,
             fromOption, toOption, methodsOption, pathPatternOption);
 
         var config = new CommandLineConfiguration(rootCommand);
@@ -85,6 +94,10 @@ public class Program
         private readonly Option<bool> _dryRun;
         private readonly Option<string?> _authToken;
         private readonly Option<string?> _authHeader;
+        private readonly Option<string?> _authOAuthEndpoint;
+        private readonly Option<string?> _authOAuthClientId;
+        private readonly Option<string?> _authOAuthClientSecret;
+        private readonly Option<string?> _authOAuthScope;
         private readonly Option<DateTimeOffset?> _from;
         private readonly Option<DateTimeOffset?> _to;
         private readonly Option<string[]?> _methods;
@@ -94,6 +107,8 @@ public class Program
             Option<string> source, Option<string> target, Option<string> timeline,
             Option<int> parallelism, Option<int> delay, Option<bool> dryRun,
             Option<string?> authToken, Option<string?> authHeader,
+            Option<string?> authOAuthEndpoint, Option<string?> authOAuthClientId,
+            Option<string?> authOAuthClientSecret, Option<string?> authOAuthScope,
             Option<DateTimeOffset?> from, Option<DateTimeOffset?> to,
             Option<string[]?> methods, Option<string?> pathPattern)
         {
@@ -105,6 +120,10 @@ public class Program
             _dryRun = dryRun;
             _authToken = authToken;
             _authHeader = authHeader;
+            _authOAuthEndpoint = authOAuthEndpoint;
+            _authOAuthClientId = authOAuthClientId;
+            _authOAuthClientSecret = authOAuthClientSecret;
+            _authOAuthScope = authOAuthScope;
             _from = from;
             _to = to;
             _methods = methods;
@@ -197,6 +216,25 @@ public class Program
         {
             var bearerToken = parseResult.GetValue(_authToken);
             var authHeader = parseResult.GetValue(_authHeader);
+            var oauthEndpoint = parseResult.GetValue(_authOAuthEndpoint);
+            var oauthClientId = parseResult.GetValue(_authOAuthClientId);
+            var oauthClientSecret = parseResult.GetValue(_authOAuthClientSecret);
+            var oauthScope = parseResult.GetValue(_authOAuthScope);
+
+            // OAuth client credentials takes precedence when all required options are provided
+            if (!string.IsNullOrEmpty(oauthEndpoint) && !string.IsNullOrEmpty(oauthClientId) && !string.IsNullOrEmpty(oauthClientSecret))
+            {
+                return new ReplayAuthentication
+                {
+                    OAuthClientCredentials = new Authentication.OAuthClientCredentialsOptions
+                    {
+                        TokenEndpoint = oauthEndpoint,
+                        ClientId = oauthClientId,
+                        ClientSecret = oauthClientSecret,
+                        Scope = oauthScope
+                    }
+                };
+            }
 
             if (!string.IsNullOrEmpty(bearerToken))
             {
@@ -222,4 +260,3 @@ public class Program
         }
     }
 }
-
