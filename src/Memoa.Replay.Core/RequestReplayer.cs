@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Memoa.Replay.Authentication;
 using Microsoft.Extensions.Logging;
 
 namespace Memoa.Replay;
@@ -8,7 +9,7 @@ namespace Memoa.Replay;
 /// Replays captured HTTP requests against a target server,
 /// optionally reproducing the original timeline between requests.
 /// </summary>
-public sealed class RequestReplayer
+public sealed class RequestReplayer : IDisposable
 {
     /// <summary>
     /// Custom header added to every replayed request to indicate it originated from the Memoa replay engine.
@@ -18,6 +19,7 @@ public sealed class RequestReplayer
     private readonly HttpClient _httpClient;
     private readonly ReplayOptions _options;
     private readonly ILogger<RequestReplayer> _logger;
+    private OAuthClientCredentialsProvider? _oauthProvider;
 
     public RequestReplayer(HttpClient httpClient, ReplayOptions options, ILogger<RequestReplayer> logger)
     {
@@ -152,7 +154,7 @@ public sealed class RequestReplayer
         try
         {
             using var message = BuildHttpRequestMessage(request);
-            ApplyAuthentication(message);
+            await ApplyAuthenticationAsync(message, cancellationToken).ConfigureAwait(false);
             using var response = await _httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
 
             _logger.LogDebug("Replayed {Method} {Path} → {StatusCode}", request.Method, request.Path, (int)response.StatusCode);
@@ -209,7 +211,7 @@ public sealed class RequestReplayer
         return message;
     }
 
-    private void ApplyAuthentication(HttpRequestMessage message)
+    private async ValueTask ApplyAuthenticationAsync(HttpRequestMessage message, CancellationToken cancellationToken)
     {
         var auth = _options.Authentication;
         if (auth is null)
@@ -217,16 +219,41 @@ public sealed class RequestReplayer
             return;
         }
 
-        if (!string.IsNullOrEmpty(auth.BearerToken))
+        // Priority 1: Explicit provider (highest precedence)
+        if (auth.Provider is not null)
+        {
+            await auth.Provider.AuthenticateAsync(message, cancellationToken).ConfigureAwait(false);
+        }
+        // Priority 2: OAuth client credentials (auto-creates provider)
+        else if (auth.OAuthClientCredentials is not null)
+        {
+            var provider = GetOrCreateOAuthProvider(auth.OAuthClientCredentials);
+            await provider.AuthenticateAsync(message, cancellationToken).ConfigureAwait(false);
+        }
+        // Priority 3: Static bearer token
+        else if (!string.IsNullOrEmpty(auth.BearerToken))
         {
             message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.BearerToken);
         }
+        // Priority 4: Static header
         else if (!string.IsNullOrEmpty(auth.HeaderName) && !string.IsNullOrEmpty(auth.HeaderValue))
         {
             message.Headers.TryAddWithoutValidation(auth.HeaderName, auth.HeaderValue);
         }
 
+        // Always invoke ConfigureRequest last (allows additional customization)
         auth.ConfigureRequest?.Invoke(message);
+    }
+
+    private OAuthClientCredentialsProvider GetOrCreateOAuthProvider(OAuthClientCredentialsOptions options)
+    {
+        if (_oauthProvider is not null)
+        {
+            return _oauthProvider;
+        }
+
+        _oauthProvider = new OAuthClientCredentialsProvider(options, _httpClient);
+        return _oauthProvider;
     }
 
     private static async Task<List<RecordedRequest>> CollectAndSortAsync(
@@ -242,5 +269,10 @@ public sealed class RequestReplayer
 
         list.Sort((a, b) => a.CapturedAtUtc.CompareTo(b.CapturedAtUtc));
         return list;
+    }
+
+    public void Dispose()
+    {
+        _oauthProvider?.Dispose();
     }
 }
