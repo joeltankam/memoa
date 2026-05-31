@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="NUnit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Serilog.Sinks.Memoa\Serilog.Sinks.Memoa.csproj" />
+  </ItemGroup>
+
+</Project>

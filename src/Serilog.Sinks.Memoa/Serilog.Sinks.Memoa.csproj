@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(MemoaLibraryTargetFrameworks)</TargetFrameworks>
+    <IsPackable>true</IsPackable>
+    <Description>Serilog sink that writes HTTP requests captured by Memoa middleware as structured log events.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="PolySharp">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Memoa.Core\Memoa.Core.csproj" />
+  </ItemGroup>
+
+</Project>

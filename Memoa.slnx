@@ -1,7 +1,4 @@
 <Solution>
-  <Configurations>
-    <Platform Name="Any CPU" />
-  </Configurations>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path="Directory.Build.props" />
@@ -30,5 +27,7 @@
     <Project Path="src/Memoa.Sinks.File/Memoa.Sinks.File.csproj" />
     <Project Path="src/Memoa.Sinks.Redis.Tests/Memoa.Sinks.Redis.Tests.csproj" />
     <Project Path="src/Memoa.Sinks.Redis/Memoa.Sinks.Redis.csproj" />
+    <Project Path="src/Serilog.Sinks.Memoa/Serilog.Sinks.Memoa.csproj" />
+    <Project Path="src/Serilog.Sinks.Memoa.Tests/Serilog.Sinks.Memoa.Tests.csproj" />
   </Folder>
 </Solution>
