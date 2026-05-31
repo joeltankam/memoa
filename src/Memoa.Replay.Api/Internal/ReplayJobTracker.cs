@@ -10,35 +10,39 @@ internal sealed class ReplayJobTracker
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IRequestSource _requestSource;
     private readonly MemoaReplayApiOptions _options;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<ReplayJobTracker> _logger;
 
     public ReplayJobTracker(
         IHttpClientFactory httpClientFactory,
         IRequestSource requestSource,
         MemoaReplayApiOptions options,
-        ILogger<ReplayJobTracker> logger)
+        ILoggerFactory loggerFactory)
     {
         _httpClientFactory = httpClientFactory;
         _requestSource = requestSource;
         _options = options;
-        _logger = logger;
+        _loggerFactory = loggerFactory;
+        _logger = loggerFactory.CreateLogger<ReplayJobTracker>();
     }
 
     public ReplayJobInfo StartJob(ReplayRunRequest request)
     {
         var jobId = Guid.NewGuid();
         var startedAt = DateTimeOffset.UtcNow;
+        var cts = new CancellationTokenSource();
 
         var state = new ReplayJobState
         {
             JobId = jobId,
             Status = "Running",
-            StartedAtUtc = startedAt
+            StartedAtUtc = startedAt,
+            CancellationSource = cts
         };
 
         _jobs[jobId] = state;
 
-        _ = Task.Run(() => ExecuteJobAsync(jobId, request));
+        _ = Task.Run(() => ExecuteJobAsync(jobId, request, cts.Token));
 
         return new ReplayJobInfo
         {
@@ -65,7 +69,23 @@ internal sealed class ReplayJobTracker
         };
     }
 
-    private async Task ExecuteJobAsync(Guid jobId, ReplayRunRequest request)
+    public bool CancelJob(Guid jobId)
+    {
+        if (!_jobs.TryGetValue(jobId, out var state))
+        {
+            return false;
+        }
+
+        if (state.Status != "Running")
+        {
+            return false;
+        }
+
+        state.CancellationSource.Cancel();
+        return true;
+    }
+
+    private async Task ExecuteJobAsync(Guid jobId, ReplayRunRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -88,7 +108,8 @@ internal sealed class ReplayJobTracker
                 Authentication = BuildAuthentication(request)
             };
 
-            var replayer = new RequestReplayer(httpClient, replayOptions, _logger as ILogger<RequestReplayer> ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<RequestReplayer>.Instance);
+            var replayerLogger = _loggerFactory.CreateLogger<RequestReplayer>();
+            var replayer = new RequestReplayer(httpClient, replayOptions, replayerLogger);
 
             var query = new RequestQuery
             {
@@ -100,9 +121,9 @@ internal sealed class ReplayJobTracker
             };
 
             var result = await replayer.ReplayAsync(
-                _requestSource.ReadAsync(query, CancellationToken.None),
+                _requestSource.ReadAsync(query, cancellationToken),
                 onOutcome: null,
-                CancellationToken.None).ConfigureAwait(false);
+                cancellationToken).ConfigureAwait(false);
 
             if (_jobs.TryGetValue(jobId, out var state))
             {
@@ -113,6 +134,16 @@ internal sealed class ReplayJobTracker
 
             _logger.LogInformation("Replay job {JobId} completed: {Total} total, {Succeeded} succeeded, {Failed} failed",
                 jobId, result.Total, result.Succeeded, result.Failed);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Replay job {JobId} was cancelled", jobId);
+
+            if (_jobs.TryGetValue(jobId, out var state))
+            {
+                state.Status = "Cancelled";
+                state.CompletedAtUtc = DateTimeOffset.UtcNow;
+            }
         }
         catch (Exception ex)
         {
@@ -142,6 +173,7 @@ internal sealed class ReplayJobTracker
         public required Guid JobId { get; init; }
         public required string Status { get; set; }
         public required DateTimeOffset StartedAtUtc { get; init; }
+        public required CancellationTokenSource CancellationSource { get; init; }
         public DateTimeOffset? CompletedAtUtc { get; set; }
         public ReplayResult? Result { get; set; }
     }

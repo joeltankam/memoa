@@ -66,7 +66,7 @@ internal class ReplayJobTrackerTests
             httpClientFactoryMock.Object,
             requestSourceMock.Object,
             options ?? new MemoaReplayApiOptions { TargetBaseUrl = "http://localhost" },
-            NullLogger<ReplayJobTracker>.Instance);
+            NullLoggerFactory.Instance);
 
         return (tracker, handler);
     }
