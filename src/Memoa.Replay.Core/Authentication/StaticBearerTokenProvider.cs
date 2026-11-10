@@ -11,7 +11,10 @@ public sealed class StaticBearerTokenProvider : IReplayAuthenticationProvider
 
     public StaticBearerTokenProvider(string token)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(token);
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new ArgumentException("The value cannot be null, empty, or whitespace.", nameof(token));
+        }
         _token = token;
     }
 
