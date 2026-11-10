@@ -11,8 +11,14 @@ public sealed class StaticHeaderProvider : IReplayAuthenticationProvider
 
     public StaticHeaderProvider(string headerName, string headerValue)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(headerName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(headerValue);
+        if (string.IsNullOrWhiteSpace(headerName))
+        {
+            throw new ArgumentException("The value cannot be null, empty, or whitespace.", nameof(headerName));
+        }
+        if (string.IsNullOrWhiteSpace(headerValue))
+        {
+            throw new ArgumentException("The value cannot be null, empty, or whitespace.", nameof(headerValue));
+        }
         _headerName = headerName;
         _headerValue = headerValue;
     }

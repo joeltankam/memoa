@@ -64,32 +64,61 @@ public static class MemoaReplayEndpointRouteBuilderExtensions
     private static async Task<IResult> ListRequestsAsync(HttpContext context)
     {
         var source = context.RequestServices.GetRequiredService<IRequestSource>();
+        var queryString = context.Request.Query;
+
+        DateTimeOffset? from = null;
+        if (queryString.ContainsKey("from"))
+        {
+            if (!DateTimeOffset.TryParse(queryString["from"], out var fromValue))
+            {
+                return Results.BadRequest(new { error = "The 'from' query parameter is not a valid date/time value." });
+            }
+
+            from = fromValue;
+        }
+
+        DateTimeOffset? to = null;
+        if (queryString.ContainsKey("to"))
+        {
+            if (!DateTimeOffset.TryParse(queryString["to"], out var toValue))
+            {
+                return Results.BadRequest(new { error = "The 'to' query parameter is not a valid date/time value." });
+            }
+
+            to = toValue;
+        }
+
+        int? take = null;
+        if (queryString.ContainsKey("take"))
+        {
+            if (!int.TryParse(queryString["take"], out var takeValue))
+            {
+                return Results.BadRequest(new { error = "The 'take' query parameter is not a valid integer value." });
+            }
+
+            take = takeValue;
+        }
+
         var query = new RequestQuery
         {
-            From = context.Request.Query.ContainsKey("from")
-                ? DateTimeOffset.Parse(context.Request.Query["from"]!)
+            From = from,
+            To = to,
+            PathPattern = queryString.ContainsKey("path")
+                ? (string?)queryString["path"]
                 : null,
-            To = context.Request.Query.ContainsKey("to")
-                ? DateTimeOffset.Parse(context.Request.Query["to"]!)
+            Methods = queryString.ContainsKey("methods")
+                ? queryString["methods"].ToString().Split(',', StringSplitOptions.RemoveEmptyEntries)
                 : null,
-            PathPattern = context.Request.Query.ContainsKey("path")
-                ? (string?)context.Request.Query["path"]
-                : null,
-            Methods = context.Request.Query.ContainsKey("methods")
-                ? context.Request.Query["methods"].ToString().Split(',', StringSplitOptions.RemoveEmptyEntries)
-                : null,
-            Take = context.Request.Query.ContainsKey("take")
-                ? int.Parse(context.Request.Query["take"]!)
-                : null
+            Take = take
         };
 
         var results = new List<RecordedRequest>();
-        var take = query.Take ?? 100;
+        var takeLimit = query.Take ?? 100;
 
         await foreach (var request in source.ReadAsync(query, context.RequestAborted).ConfigureAwait(false))
         {
             results.Add(request);
-            if (results.Count >= take)
+            if (results.Count >= takeLimit)
             {
                 break;
             }

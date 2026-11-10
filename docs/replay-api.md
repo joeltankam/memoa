@@ -81,6 +81,8 @@ Query captured requests from the registered `IRequestSource`.
 
 **Response:** `200 OK` with a JSON array of `RecordedRequest` objects.
 
+Malformed `from`, `to`, or `take` values return `400 Bad Request` with a JSON body that names the invalid parameter.
+
 ```bash
 curl "https://localhost:5001/replay?from=2026-05-01T00:00:00Z&methods=POST,PUT&take=10"
 ```
