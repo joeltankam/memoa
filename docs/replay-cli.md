@@ -26,7 +26,7 @@ memoa-replay \
 | Option | Alias | Description |
 |--------|-------|-------------|
 | `--source` | `-s` | Source backend: `azure`, `file`, `s3`, `redis` |
-| `--target` | `-t` | Base URL to replay requests against |
+| `--target` | `-t` | Absolute `http` or `https` base URL to replay requests against |
 
 ### Timeline and Pacing
 
@@ -198,6 +198,10 @@ Output:
 |------|---------|
 | `0` | All requests replayed successfully |
 | `1` | One or more requests failed |
+
+Invalid argument values also exit with `1`. The tool writes a single `Error: ...` line to stderr when it
+meets an unknown `--source`, a source option that is missing, a `--auth-header` that is not in
+`Name:Value` format, or a `--target` that is not an absolute `http` or `https` URL.
 
 ## Output
 

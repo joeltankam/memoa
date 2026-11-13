@@ -161,18 +161,19 @@ public class Program
             }
 
             IRequestSource requestSource;
+            ReplayAuthentication? authentication;
+            Uri targetUri;
             try
             {
                 requestSource = provider.CreateSource(parseResult);
+                authentication = BuildAuthentication(parseResult);
+                targetUri = ParseTarget(target);
             }
             catch (InvalidOperationException ex)
             {
                 await Console.Error.WriteLineAsync($"Error: {ex.Message}").ConfigureAwait(false);
                 return 1;
             }
-
-            // Build authentication
-            var authentication = BuildAuthentication(parseResult);
 
             var replayOptions = new ReplayOptions
             {
@@ -184,7 +185,7 @@ public class Program
                 Authentication = authentication
             };
 
-            using var httpClient = new HttpClient { BaseAddress = new Uri(target) };
+            using var httpClient = new HttpClient { BaseAddress = targetUri };
             var replayer = new RequestReplayer(httpClient, replayOptions, NullLogger<RequestReplayer>.Instance);
 
             var result = await replayer.ReplayAsync(
@@ -210,6 +211,18 @@ public class Program
             await Console.Out.WriteLineAsync($"Replay complete: {result.Total} total, {result.Succeeded} succeeded, {result.Failed} failed").ConfigureAwait(false);
 
             return result.Failed > 0 ? 1 : 0;
+        }
+
+        private static Uri ParseTarget(string target)
+        {
+            if (!Uri.TryCreate(target, UriKind.Absolute, out var targetUri) ||
+                (targetUri.Scheme != Uri.UriSchemeHttp && targetUri.Scheme != Uri.UriSchemeHttps))
+            {
+                throw new InvalidOperationException(
+                    $"--target must be an absolute http or https URL (e.g., 'https://localhost:5001'). Got '{target}'.");
+            }
+
+            return targetUri;
         }
 
         private ReplayAuthentication? BuildAuthentication(ParseResult parseResult)
